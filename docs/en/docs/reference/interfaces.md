@@ -60,12 +60,10 @@ Claims and checks are either `declared` with no evidence or `verified` with exac
 citation proves identity and availability, not freshness. Current instructions, live workspace state, capabilities,
 and authorization still take precedence over all Work and Handoff records.
 
-Each Handoff Report JSON Workstream projection also returns `handoff_revision_count`,
-`handoff_history_truncated`, and `handoff_history`. History contains at most the latest 20 Revision summaries through
-the frozen selection in ascending Revision order; the page presents them latest-first and refreshes every five
-seconds. Unsent edits or an active Handoff action pause automatic refresh. The Codex scope resolver can bind the
-current Git workspace once to a fixed Workstream scope. That binding takes precedence over Git remote and path
-derivation, but remains below explicit scope configuration.
+Handoff Report is a read-only projection over a Scope selection. `all` includes every Scope, `exact` includes only the
+listed Scope IDs, and `subtree` includes an organization root and all descendants. Each included Scope contributes its
+latest exact Handoff address or an explicit `no_handoff` result; Parent does not imply Context visibility. Codex fixes
+ordinary Agent report reads to the current Session Scope. Broader selections belong to host and Dashboard views.
 
 ## DeepSeek Harness plugin
 

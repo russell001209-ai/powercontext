@@ -55,10 +55,10 @@ Experience。Integration 只应在真实完成或中断边界调用它，不能�
 Claim 和 check 要么是没有 evidence 的 `declared`，要么是拥有同 scope 精确 citation 的 `verified`。Citation 可读只证明
 身份和可用性，不证明事实仍然新鲜。当前指令、实时 workspace、能力和授权始终优先于 Work 与 Handoff 记录。
 
-Handoff Report 的 JSON Workstream projection 同时返回 `handoff_revision_count`、`handoff_history_truncated` 和
-`handoff_history`。History 最多包含 frozen selection 之前最近 20 个 Revision 摘要，按 Revision 升序返回；页面按最新
-优先展示，并每 5 秒自动刷新。未发送编辑或正在执行的交接动作会暂停自动刷新。Codex scope resolver 支持把当前 Git
-工作区一次绑定到固定 Workstream scope，绑定优先于 Git remote 和路径推导，但低于显式 scope 配置。
+Handoff Report 是 Scope selection 上的只读投影。`all` 包含全部 Scope，`exact` 只包含列出的 Scope ID，`subtree`
+包含一个组织根及其全部后代。每个选中 Scope 提供 latest exact Handoff address，或者明确的 `no_handoff`；Parent 不会
+隐式授予 Context 可见性。Codex 会把普通 Agent 的报告读取固定为当前 Session Scope；更宽的 selection 由 host 和
+Dashboard 使用。
 
 ## DeepSeek Harness 插件
 
