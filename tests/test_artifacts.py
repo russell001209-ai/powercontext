@@ -23,6 +23,7 @@ from pydantic import ValidationError
 from powercontext import ArtifactFamilyMismatchError
 from powercontext.artifacts import (
     Artifact,
+    ArtifactAddress,
     ArtifactCatalog,
     ArtifactDraft,
     ArtifactLineage,
@@ -62,6 +63,18 @@ def test_artifact_is_a_fixed_family_snapshot_with_direct_lineage() -> None:
     assert artifact.family == "extracted-memory"
     assert artifact.as_ref() == ArtifactRef(family="extracted-memory", artifact_id="preference-memory", revision=3)
     assert artifact.lineage == ArtifactLineage(sources=(source,), artifacts=(dependency,))
+
+
+def test_artifact_address_adds_scope_only_at_cross_scope_boundaries() -> None:
+    artifact = ArtifactRef(family="memory", artifact_id="memory", revision=3)
+
+    address = ArtifactAddress(scope_id="scope-a", artifact=artifact)
+
+    assert address.artifact is artifact
+    assert address.model_dump(mode="json") == {
+        "scope_id": "scope-a",
+        "artifact": {"family": "memory", "artifact_id": "memory", "revision": 3},
+    }
 
 
 @pytest.mark.parametrize(

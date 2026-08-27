@@ -119,7 +119,12 @@ from powercontext.builtin.runtime.models import (
     SkillCandidate,
     SourceReceipt,
 )
-from powercontext.builtin.runtime.prepared_context import PreparedContextBuild, PreparedContextBuilder
+from powercontext.builtin.runtime.prepared_context import (
+    PreparedContextBuild,
+    PreparedContextBuilder,
+    PreparedExperienceCandidates,
+    PreparedMemoryCandidates,
+)
 from powercontext.builtin.runtime.protocols import (
     BuiltinTriggers,
     PowerContextProvider,
@@ -133,7 +138,7 @@ from powercontext.builtin.runtime.readiness import (
     RuntimeReadinessChecks,
 )
 from powercontext.builtin.runtime.statistics import RelationalScopedStatistics
-from powercontext.builtin.scope import ScopeApplication
+from powercontext.builtin.scope import ScopeApplication, ScopeNotFoundError
 from powercontext.builtin.sources import (
     ContentCapture,
     ContentSource,
@@ -337,78 +342,55 @@ class ScopedContextApplication:
 
     async def _prepare(self, request: PrepareContextRequest, /) -> PreparedContext:
         builder = PreparedContextBuilder()
-        async with (
-            self._runtime._context(self.scope_id, embedding_purpose=ModelUsagePurpose.MEMORY_RECALL) as context,
-            self._runtime._locked(self.scope_id),
-        ):
-            with self._runtime._stage(
-                _MEMORY_SEARCH_STAGE,
-                attributes={
-                    _MEMORY_SEARCH_REQUESTED_MODE: "auto",
-                    _MEMORY_SEARCH_LIMIT: builder.memory_candidate_limit,
-                },
-            ) as span:
-                service = context.artifacts.memory
-                current = await _head_or_none(service, context.artifacts.memory_artifact_id)
-                memory_hits = ()
-                search_mode: str | None = None
-                if current is not None:
-                    result = await service.search(
-                        request.query,
-                        memories=(current,),
-                        limit=builder.memory_candidate_limit,
-                        mode="auto",
-                    )
-                    memory_hits = result.hits
-                    search_mode = result.mode
-                if span is not None:
-                    attributes: dict[str, TraceAttribute] = {
-                        _MEMORY_SEARCH_MEMORY_PRESENT: current is not None,
-                        _MEMORY_SEARCH_RESULT_COUNT: len(memory_hits),
-                    }
-                    if search_mode is not None:
-                        attributes[_MEMORY_SEARCH_MODE] = search_mode
-                    span.set_attributes(attributes)
+        scope_ids = [self.scope_id]
+        if self._runtime.scopes is not None:
+            try:
+                scope = await self._runtime.scopes.get(self.scope_id)
+            except ScopeNotFoundError:
+                pass
+            else:
+                scope_ids.extend(scope.context_references)
 
-            experience_recall = self._runtime._experience_recall
-            with self._runtime._stage(
-                "experience.search",
-                attributes={
-                    "powercontext.experience.search.configured": experience_recall is not None,
-                    "powercontext.experience.search.limit": builder.experience_candidate_limit,
-                },
-            ) as span:
-                experience_hits = (
-                    ()
-                    if experience_recall is None
-                    else await experience_recall(
-                        self.scope_id,
-                        request.query,
-                        builder.experience_candidate_limit,
-                    )
-                )
-                if span is not None:
-                    span.set_attributes({"powercontext.experience.search.result_count": len(experience_hits)})
+        memory_candidates: list[PreparedMemoryCandidates] = []
+        experience_candidates: list[PreparedExperienceCandidates] = []
+        remaining_memory = builder.memory_candidate_limit
+        remaining_experience = builder.experience_candidate_limit
+        for scope_id in scope_ids:
+            memory, experiences = await self._recall_scope(
+                scope_id,
+                request,
+                memory_limit=remaining_memory,
+                experience_limit=remaining_experience,
+            )
+            memory_candidates.append(memory)
+            experience_candidates.append(experiences)
+            remaining_memory -= len(memory.hits)
+            remaining_experience -= len(experiences.hits)
 
-            with self._runtime._stage(
-                "context.build",
-                attributes={
-                    "powercontext.context.build.memory_candidate_count": len(memory_hits),
-                    "powercontext.context.build.experience_candidate_count": len(experience_hits),
-                },
-            ) as span:
-                build = builder.build_result(
-                    request=request,
-                    memory_ref=None if current is None else current.as_ref(),
-                    hits=memory_hits,
-                    experience_hits=experience_hits,
-                )
-                if span is not None:
-                    span.set_attributes({
-                        "powercontext.context.build.selected_count": len(build.origins),
-                        "powercontext.context.build.status": build.context.status,
-                        "powercontext.context.build.content_bytes": build.context.content_bytes,
-                    })
+        with self._runtime._stage(
+            "context.build",
+            attributes={
+                "powercontext.context.build.scope_count": len(scope_ids),
+                "powercontext.context.build.memory_candidate_count": sum(
+                    len(candidates.hits) for candidates in memory_candidates
+                ),
+                "powercontext.context.build.experience_candidate_count": sum(
+                    len(candidates.hits) for candidates in experience_candidates
+                ),
+            },
+        ) as span:
+            build = builder.build_scopes_result(
+                request=request,
+                current_scope_id=self.scope_id,
+                memory_candidates=memory_candidates,
+                experience_candidates=experience_candidates,
+            )
+            if span is not None:
+                span.set_attributes({
+                    "powercontext.context.build.selected_count": len(build.origins),
+                    "powercontext.context.build.status": build.context.status,
+                    "powercontext.context.build.content_bytes": build.context.content_bytes,
+                })
         if self._runtime._recall_token_estimator is not None:
             try:
                 measurement = await self._runtime._recall_token_estimator(self.scope_id, build)
@@ -428,6 +410,75 @@ class ScopedContextApplication:
                 if measurement is not None:
                     await self._runtime.statistics.for_scope(self.scope_id).record_recall(measurement)
         return build.context
+
+    async def _recall_scope(
+        self,
+        scope_id: str,
+        request: PrepareContextRequest,
+        *,
+        memory_limit: int,
+        experience_limit: int,
+    ) -> tuple[PreparedMemoryCandidates, PreparedExperienceCandidates]:
+        async with (
+            self._runtime._context(scope_id, embedding_purpose=ModelUsagePurpose.MEMORY_RECALL) as context,
+            self._runtime._locked(scope_id),
+        ):
+            with self._runtime._stage(
+                _MEMORY_SEARCH_STAGE,
+                attributes={
+                    _MEMORY_SEARCH_REQUESTED_MODE: "auto",
+                    _MEMORY_SEARCH_LIMIT: memory_limit,
+                },
+            ) as span:
+                service = context.artifacts.memory
+                current = await _head_or_none(service, context.artifacts.memory_artifact_id)
+                memory_hits = ()
+                search_mode: str | None = None
+                if current is not None and memory_limit > 0:
+                    result = await service.search(
+                        request.query,
+                        memories=(current,),
+                        limit=memory_limit,
+                        mode="auto",
+                    )
+                    memory_hits = result.hits
+                    search_mode = result.mode
+                if span is not None:
+                    attributes: dict[str, TraceAttribute] = {
+                        _MEMORY_SEARCH_MEMORY_PRESENT: current is not None,
+                        _MEMORY_SEARCH_RESULT_COUNT: len(memory_hits),
+                    }
+                    if search_mode is not None:
+                        attributes[_MEMORY_SEARCH_MODE] = search_mode
+                    span.set_attributes(attributes)
+
+            experience_recall = self._runtime._experience_recall
+            with self._runtime._stage(
+                "experience.search",
+                attributes={
+                    "powercontext.experience.search.configured": experience_recall is not None,
+                    "powercontext.experience.search.limit": experience_limit,
+                },
+            ) as span:
+                experience_hits = (
+                    ()
+                    if experience_recall is None or experience_limit == 0
+                    else await experience_recall(
+                        scope_id,
+                        request.query,
+                        experience_limit,
+                    )
+                )
+                if span is not None:
+                    span.set_attributes({"powercontext.experience.search.result_count": len(experience_hits)})
+        return (
+            PreparedMemoryCandidates(
+                scope_id=scope_id,
+                memory_ref=None if current is None else current.as_ref(),
+                hits=memory_hits,
+            ),
+            PreparedExperienceCandidates(scope_id=scope_id, hits=experience_hits),
+        )
 
 
 class ContextApplication:

@@ -21,7 +21,7 @@ from typing import ClassVar, Generic, TypeVar
 from pydantic import BaseModel, Field, StrictInt, field_validator, model_validator
 
 from powercontext.errors import InvalidArtifactReferenceError
-from powercontext.limits import MAX_ARTIFACT_FAMILY_LENGTH, MAX_ARTIFACT_ID_LENGTH
+from powercontext.limits import MAX_ARTIFACT_FAMILY_LENGTH, MAX_ARTIFACT_ID_LENGTH, MAX_SCOPE_ID_LENGTH
 from powercontext.sources.models import SourceRef
 
 ContentT = TypeVar("ContentT", covariant=True)
@@ -41,6 +41,24 @@ class ArtifactRef(BaseModel):
         maximum = MAX_ARTIFACT_FAMILY_LENGTH if info.field_name == "family" else MAX_ARTIFACT_ID_LENGTH
         if len(value) > maximum:
             raise InvalidArtifactReferenceError(info.field_name, f"must not exceed {maximum} characters")
+        return value
+
+
+class ArtifactAddress(BaseModel):
+    """A complete address for one exact Artifact revision across Scope boundaries."""
+
+    scope_id: str
+    artifact: ArtifactRef
+
+    @field_validator("scope_id")
+    @classmethod
+    def validate_scope_id(cls, value: str) -> str:
+        _validate_reference_part("scope_id", value)
+        if len(value) > MAX_SCOPE_ID_LENGTH:
+            raise InvalidArtifactReferenceError(
+                "scope_id",
+                f"must not exceed {MAX_SCOPE_ID_LENGTH} characters",
+            )
         return value
 
 

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, cast
 from uuid import uuid4
 
@@ -268,9 +268,10 @@ class _ScopedServices:
         if self.token_estimator is None:
             return None
 
-        def memory_service(connection: AsyncConnection) -> MemoryService:
-            _, source_catalog = self.sources(connection)
-            return self.memory(source_catalog, connection)
+        def memory_service(scope_id: str, connection: AsyncConnection) -> MemoryService:
+            services = self if scope_id == self.scope_id else replace(self, scope_id=scope_id)
+            _, source_catalog = services.sources(connection)
+            return services.memory(source_catalog, connection)
 
         return RelationalRecallTokenEstimator(
             database=self.database,

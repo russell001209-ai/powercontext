@@ -28,6 +28,7 @@ from powercontext.builtin.runtime import (
     SearchMemoryRequest,
     open_builtin_runtime,
 )
+from powercontext.builtin.scope import ScopeDraft, ScopeMutation
 from powercontext.builtin.sources import ContentSource
 
 
@@ -88,6 +89,80 @@ def test_builtin_runtime_uses_sqlite_fts_without_vector_extension(tmp_path, monk
             assert no_memory.content is None
             assert no_match.status == "empty"
             assert no_match.content is None
+
+    asyncio.run(scenario())
+
+
+def test_prepare_context_reads_only_direct_context_references() -> None:
+    async def scenario() -> None:
+        async with open_builtin_runtime(BuiltinConfig(database=SQLiteConfig())) as runtime:
+            assert runtime.scopes is not None
+            shared = await runtime.scopes.create(
+                ScopeDraft(title="Shared", summary="Reusable evidence", idempotency_key="shared")
+            )
+            middle = await runtime.scopes.create(
+                ScopeDraft(
+                    title="Middle",
+                    summary="Reads shared evidence",
+                    context_references=(shared.scope_id,),
+                    idempotency_key="middle",
+                )
+            )
+            reader = await runtime.scopes.create(
+                ScopeDraft(
+                    title="Reader",
+                    summary="Reads middle only",
+                    context_references=(middle.scope_id,),
+                    idempotency_key="reader",
+                )
+            )
+            child = await runtime.scopes.create(
+                ScopeDraft(
+                    title="Child",
+                    summary="Organized under shared",
+                    parent_scope_id=shared.scope_id,
+                    idempotency_key="child",
+                )
+            )
+            await runtime.memory.for_scope(shared.scope_id).remember(
+                RememberMemoryRequest(entries=(MemoryEntryInput(kind="fact", text="Shared direct context evidence."),))
+            )
+
+            direct = await runtime.context.for_scope(middle.scope_id).prepare(
+                PrepareContextRequest(query="direct context evidence")
+            )
+            transitive = await runtime.context.for_scope(reader.scope_id).prepare(
+                PrepareContextRequest(query="direct context evidence")
+            )
+            reverse = await runtime.context.for_scope(shared.scope_id).prepare(
+                PrepareContextRequest(query="unrelated reverse evidence")
+            )
+            parent_only = await runtime.context.for_scope(child.scope_id).prepare(
+                PrepareContextRequest(query="direct context evidence")
+            )
+
+            assert direct.status == "ready"
+            assert direct.content is not None
+            item = json.loads(direct.content.splitlines()[-2])["items"][0]
+            assert item["citation"]["memory"]["scope_id"] == shared.scope_id
+            assert transitive.status == "empty"
+            assert reverse.status == "empty"
+            assert parent_only.status == "empty"
+
+            updated = await runtime.scopes.update(
+                reader.scope_id,
+                ScopeMutation(
+                    expected_version=reader.version,
+                    title=reader.title,
+                    summary=reader.summary,
+                    context_references=(shared.scope_id,),
+                ),
+            )
+            assert updated.context_references == (shared.scope_id,)
+            now_direct = await runtime.context.for_scope(reader.scope_id).prepare(
+                PrepareContextRequest(query="direct context evidence")
+            )
+            assert now_direct.status == "ready"
 
     asyncio.run(scenario())
 
