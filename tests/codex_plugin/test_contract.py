@@ -186,6 +186,8 @@ def test_project_context_skill_uses_the_high_level_work_continuity_loop() -> Non
     assert "canonical temporary carrier" in content
     assert 'selection: "prepared"' in content
     assert "call `commit_handoff` only when" in content
+    assert "Use `get_handoff_report` only as a read-only summary" in content
+    assert "Broader `all` and `subtree` views are" in content
     assert "Do not treat every session stop as task completion" in content
 
 

@@ -36,6 +36,7 @@ _SCOPE_BOUND_OPERATIONS = frozenset({
     "create_work_contract",
     "finalize_handoff",
     "get_artifact_candidate",
+    "get_handoff_report",
     "get_memory_entry",
     "handoff_current_work",
     "list_artifact_candidates",
@@ -84,7 +85,10 @@ def main(settings: CodexPluginSettings | None = None) -> int:
             deadline=monotonic() + settings.http_budget_seconds,
         )
         updated = dict(tool_input)
-        updated["scope_id"] = scope_id
+        if operation == "get_handoff_report":
+            updated["selection"] = {"mode": "exact", "scope_ids": [scope_id]}
+        else:
+            updated["scope_id"] = scope_id
         _allow(updated)
     except (ScopeBindingError, ValueError, OSError, json.JSONDecodeError):
         _deny()

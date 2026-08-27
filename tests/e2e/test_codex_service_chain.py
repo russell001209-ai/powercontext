@@ -25,6 +25,7 @@ import threading
 import time
 from pathlib import Path
 
+import httpx
 import pytest
 import uvicorn
 from fastmcp import Client
@@ -46,7 +47,6 @@ from powercontext.server.settings import BearerAuthConfig, McpConfig, ServerSett
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CODEX_PLUGIN = PROJECT_ROOT / "integrations" / "codex" / "plugins" / "powercontext"
-SCOPE_ID = "project:codex-e2e"
 AUTH_TOKEN = "codex-e2e-token"  # noqa: S105 - non-secret test credential.
 AUTHORIZATION = f"Bearer {AUTH_TOKEN}"
 
@@ -112,12 +112,17 @@ def test_codex_hook_http_sdk_and_mcp_share_one_composed_context(
         mcp_configuration = json.loads((plugin / ".mcp.json").read_text())
         mcp_configuration["mcpServers"]["powercontext"]["url"] = f"{base_url}/mcp"
         (plugin / ".mcp.json").write_text(json.dumps(mcp_configuration))
+        scope_id = _create_scope(
+            base_url,
+            authorization=AUTHORIZATION if authentication_enabled else None,
+        )
 
         first = _run_hook(
             plugin,
             prompt="Remember which object is the composition root.",
             turn_id="turn-1",
             authorization=AUTHORIZATION if authentication_enabled else None,
+            scope_id=scope_id,
         )
         assert first.stdout == ""
         assert AUTH_TOKEN not in first.stderr
@@ -127,6 +132,7 @@ def test_codex_hook_http_sdk_and_mcp_share_one_composed_context(
             prompt="Which composition root should this project use?",
             turn_id="turn-2",
             authorization=AUTHORIZATION if authentication_enabled else None,
+            scope_id=scope_id,
         )
         context = json.loads(recalled.stdout)["hookSpecificOutput"]["additionalContext"]
         envelope = json.loads(context.splitlines()[-2])
@@ -138,18 +144,18 @@ def test_codex_hook_http_sdk_and_mcp_share_one_composed_context(
             async with PowerContextClient(base_url, token=AUTH_TOKEN if authentication_enabled else None) as sdk:
                 found = await sdk.search_memory(
                     SearchMemoryRequest(
-                        scope_id=SCOPE_ID,
+                        scope_id=scope_id,
                         query="PowerContext composition root",
                     )
                 )
                 prepared = await sdk.prepare_context(
                     PrepareContextRequest(
-                        scope_id=SCOPE_ID,
+                        scope_id=scope_id,
                         query="PowerContext composition root",
                     )
                 )
                 entries = await sdk.list_memory_entries(
-                    ListMemoryEntriesRequest(scope_id=SCOPE_ID),
+                    ListMemoryEntriesRequest(scope_id=scope_id),
                 )
                 assert found.hits
                 assert {hit.text for hit in found.hits} == {"Use PowerContext as the composition root."}
@@ -169,7 +175,7 @@ def test_codex_hook_http_sdk_and_mcp_share_one_composed_context(
                     result = await mcp.call_tool(
                         "search_memory",
                         {
-                            "scope_id": SCOPE_ID,
+                            "scope_id": scope_id,
                             "query": "PowerContext composition root",
                         },
                     )
@@ -183,7 +189,7 @@ def test_codex_hook_http_sdk_and_mcp_share_one_composed_context(
                 while current.entries:
                     retired = await sdk.retire_memory_entry(
                         RetireMemoryEntryRequest(
-                            scope_id=SCOPE_ID,
+                            scope_id=scope_id,
                             citation=current.entries[0].citation,
                             reason="superseded",
                         ),
@@ -191,10 +197,10 @@ def test_codex_hook_http_sdk_and_mcp_share_one_composed_context(
                     assert retired.entry is not None
                     retired_entry_ids.add(retired.entry.citation.entry_id)
                     current = await sdk.list_memory_entries(
-                        ListMemoryEntriesRequest(scope_id=SCOPE_ID),
+                        ListMemoryEntriesRequest(scope_id=scope_id),
                     )
                 audited = await sdk.list_memory_entries(
-                    ListMemoryEntriesRequest(scope_id=SCOPE_ID, include_inactive=True),
+                    ListMemoryEntriesRequest(scope_id=scope_id, include_inactive=True),
                 )
                 assert current.entries == []
                 assert {entry.citation.entry_id for entry in audited.entries} == retired_entry_ids
@@ -207,6 +213,7 @@ def test_codex_hook_http_sdk_and_mcp_share_one_composed_context(
             prompt="Which composition root should this project use?",
             turn_id="turn-3",
             authorization=AUTHORIZATION if authentication_enabled else None,
+            scope_id=scope_id,
         )
         assert excluded.stdout == ""
         assert AUTH_TOKEN not in excluded.stderr
@@ -223,13 +230,14 @@ def _run_hook(
     prompt: str,
     turn_id: str,
     authorization: str | None,
+    scope_id: str,
 ) -> subprocess.CompletedProcess[str]:
     environment: dict[str, str] = {
         **os.environ,
         "POWERCONTEXT_CODEX_FLUSH_ON_CAPTURE": "true",
         "POWERCONTEXT_CODEX_HTTP_BUDGET_SECONDS": "10",
         "POWERCONTEXT_CODEX_REQUEST_TIMEOUT_SECONDS": "5",
-        "POWERCONTEXT_CODEX_SCOPE_ID": SCOPE_ID,
+        "POWERCONTEXT_CODEX_SCOPE_ID": scope_id,
     }
     environment.pop("POWERCONTEXT_CODEX_AUTHORIZATION", None)
     if authorization is not None:
@@ -250,6 +258,22 @@ def _run_hook(
         check=True,
         timeout=15,
     )
+
+
+def _create_scope(base_url: str, *, authorization: str | None) -> str:
+    headers = {"Authorization": authorization} if authorization is not None else None
+    response = httpx.post(
+        f"{base_url}/v1/scopes",
+        headers=headers,
+        json={
+            "title": "Codex end-to-end work",
+            "summary": "Shared context for the Codex integration test.",
+            "idempotency_key": "codex-e2e-work",
+        },
+        timeout=5,
+    )
+    response.raise_for_status()
+    return response.json()["scope_id"]
 
 
 def _wait_until_started(server: uvicorn.Server, thread: threading.Thread) -> None:
