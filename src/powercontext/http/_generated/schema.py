@@ -94,6 +94,31 @@ OPENAPI_SCHEMA: dict[str, JsonValue] = {
                 },
             },
         },
+        "/v1/artifact-publications": {
+            "post": {
+                "tags": ["scopes"],
+                "summary": "Publish one exact Artifact revision into another Scope",
+                "operationId": "publish_artifact",
+                "requestBody": {
+                    "content": {
+                        "application/json": {"schema": {"$ref": "#/components/schemas/PublishArtifactRequest"}}
+                    },
+                    "required": True,
+                },
+                "responses": {
+                    "201": {
+                        "description": "Independent target Artifact and its exact source provenance.",
+                        "content": {
+                            "application/json": {"schema": {"$ref": "#/components/schemas/ArtifactPublication"}}
+                        },
+                    },
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "409": {"$ref": "#/components/responses/Conflict"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "422": {"$ref": "#/components/responses/InvalidRequest"},
+                },
+            }
+        },
         "/v1/scopes/get": {
             "post": {
                 "tags": ["scopes"],
@@ -1731,6 +1756,35 @@ OPENAPI_SCHEMA: dict[str, JsonValue] = {
                 "additionalProperties": False,
                 "type": "object",
                 "required": ["family", "artifact_id", "revision"],
+            },
+            "ArtifactAddress": {
+                "properties": {
+                    "scope_id": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                    "artifact": {"$ref": "#/components/schemas/ArtifactReference"},
+                },
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["scope_id", "artifact"],
+            },
+            "PublishArtifactRequest": {
+                "properties": {
+                    "source": {"$ref": "#/components/schemas/ArtifactAddress"},
+                    "target_scope_id": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                    "idempotency_key": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                },
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["source", "target_scope_id", "idempotency_key"],
+            },
+            "ArtifactPublication": {
+                "properties": {
+                    "source": {"$ref": "#/components/schemas/ArtifactAddress"},
+                    "target": {"$ref": "#/components/schemas/ArtifactAddress"},
+                    "content_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                },
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["source", "target", "content_digest"],
             },
             "ScopeExternalReference": {
                 "properties": {

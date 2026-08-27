@@ -54,6 +54,7 @@ from powercontext.http._generated.operations import (
     LIST_HANDOFF_REPORT_WORKSTREAMS,
     LIST_MEMORY_ENTRIES,
     LIST_SCOPES,
+    PUBLISH_ARTIFACT,
     RECORD_TASK_OUTCOME,
     REJECT_ARTIFACT_CANDIDATE,
     REMEMBER_MEMORY,
@@ -105,6 +106,7 @@ _MCP_OPERATION_IDS = frozenset({
     GET_SCOPE.operation_id,
     SET_SCOPE_BINDING.operation_id,
     CLEAR_SCOPE_BINDING.operation_id,
+    PUBLISH_ARTIFACT.operation_id,
 })
 _MCP_READ_ONLY_OPERATION_IDS = frozenset({
     CONTINUE_HANDOFF.operation_id,

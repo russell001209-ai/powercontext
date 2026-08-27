@@ -79,6 +79,40 @@ def test_pre_tool_hook_fixes_control_binding_to_current_session(
     }
 
 
+def test_pre_tool_hook_preserves_explicit_publication_boundaries(
+    bind_tools_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tool_input = {
+        "source": {
+            "scope_id": "source-scope",
+            "artifact": {"family": "handoff", "artifact_id": "handoff", "revision": 3},
+        },
+        "target_scope_id": "target-scope",
+        "idempotency_key": "handoff-3",
+    }
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps({
+                "hook_event_name": "PreToolUse",
+                "session_id": "session-a",
+                "cwd": "/workspace",
+                "tool_name": "mcp__powercontext__publish_artifact",
+                "tool_input": tool_input,
+            })
+        ),
+    )
+    output = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", output)
+
+    assert bind_tools_module.main() == 0
+    result = json.loads(output.getvalue())["hookSpecificOutput"]
+    assert result["permissionDecision"] == "allow"
+    assert result["updatedInput"] == tool_input
+
+
 def test_pre_tool_hook_denies_data_plane_when_binding_is_unavailable(
     bind_tools_module: ModuleType,
     monkeypatch: pytest.MonkeyPatch,

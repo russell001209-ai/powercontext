@@ -30,6 +30,32 @@ class ArtifactReference(BaseModel):
     revision: Annotated[StrictInt, Field(ge=1)]
 
 
+class ArtifactAddress(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    scope_id: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+    artifact: ArtifactReference
+
+
+class PublishArtifactRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    source: ArtifactAddress
+    target_scope_id: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+    idempotency_key: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+
+
+class ArtifactPublication(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    source: ArtifactAddress
+    target: ArtifactAddress
+    content_digest: Annotated[StrictStr, Field(pattern="^[0-9a-f]{64}$")]
+
+
 class ScopeExternalReference(BaseModel):
     model_config = ConfigDict(
         extra="forbid",

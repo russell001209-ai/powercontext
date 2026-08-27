@@ -137,6 +137,7 @@ def test_mcp_exposes_only_data_plane_and_integration_control_operations() -> Non
         "list_artifact_candidates",
         "list_memory_entries",
         "list_scopes",
+        "publish_artifact",
         "reject_artifact_candidate",
         "record_task_outcome",
         "remember_memory",

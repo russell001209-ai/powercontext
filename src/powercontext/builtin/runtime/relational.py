@@ -77,6 +77,7 @@ from powercontext.builtin.persistence.memory_index import MemoryIndex, NoMemoryI
 from powercontext.builtin.persistence.sources import SourceRepository, StoredSource
 from powercontext.builtin.persistence.statistics import StatisticsRepository
 from powercontext.builtin.persistence.tables import ARTIFACT_HEADS_TABLE, SOURCE_JOURNAL_HEADS_TABLE
+from powercontext.builtin.publication import ArtifactPublicationApplication
 from powercontext.builtin.review.generation import (
     GeneratedCandidateResult,
     GenerationCapabilityUnavailableError,
@@ -320,6 +321,11 @@ class RelationalContexts:
             cursors=SourceCursorRepository(),
             external_skills=ExternalSkillRepository(),
             statistics=StatisticsRepository(),
+        )
+        self.publications = ArtifactPublicationApplication(
+            database,
+            self.repositories.artifacts,
+            self.scopes,
         )
         self._candidate_pipeline = candidate_pipeline
         self.memory_extraction = candidate_pipeline is not None

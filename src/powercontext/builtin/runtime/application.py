@@ -71,6 +71,7 @@ from powercontext.builtin.artifacts.skill.registry import ExternalSkillRegistryS
 from powercontext.builtin.context import BuiltinArtifacts, BuiltinSources
 from powercontext.builtin.inference.models import InferenceUsage
 from powercontext.builtin.inference.usage import bind_usage_reporter
+from powercontext.builtin.publication import ArtifactPublicationApplication
 from powercontext.builtin.review.generation import GeneratedCandidateResult, ReviewedGenerationService
 from powercontext.builtin.review.service import ReviewService
 from powercontext.builtin.runtime._scope_cache import (
@@ -1243,6 +1244,7 @@ class BuiltinRuntime:
         external_skill_importer: ExternalSkillImporter | None = None,
         statistics_service: StatisticsServiceFactory | None = None,
         recall_token_estimator: RecallTokenEstimator | None = None,
+        publication_application: ArtifactPublicationApplication | None = None,
         scope_application: ScopeApplication | None = None,
         readiness: RuntimeReadinessChecks | None = None,
         clock: Clock | None = None,
@@ -1262,6 +1264,7 @@ class BuiltinRuntime:
         self._external_skill_importer = external_skill_importer
         self._statistics_service = statistics_service
         self._recall_token_estimator = recall_token_estimator
+        self.publications = publication_application
         self.scopes = scope_application
         self._readiness = RuntimeReadinessChecks() if readiness is None else readiness
         self._clock = _utc_now if clock is None else clock

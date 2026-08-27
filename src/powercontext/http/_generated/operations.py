@@ -12,6 +12,7 @@ from powercontext.http._generated.models import (
     ApproveArtifactCandidateRequest,
     ArtifactCandidate,
     ArtifactCandidatePage,
+    ArtifactPublication,
     AttachHandoffReportWorkspaceRequest,
     Capabilities,
     CaptureContentSourceRequest,
@@ -75,6 +76,7 @@ from powercontext.http._generated.models import (
     ProjectPage,
     ProposeExperienceRequest,
     ProposeSkillRequest,
+    PublishArtifactRequest,
     PurgeHandoffReportActivitiesRequest,
     PurgeHandoffReportActivitiesResponse,
     ReadinessResponse,
@@ -219,6 +221,25 @@ CREATE_SCOPE = Operation[CreateScopeRequest, ScopeDescriptor](
     tags=("scopes",),
     responses={
         201: {"description": "The durable Scope descriptor."},
+        404: {"$ref": "#/components/responses/NotFound"},
+        409: {"$ref": "#/components/responses/Conflict"},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+        422: {"$ref": "#/components/responses/InvalidRequest"},
+    },
+)
+
+PUBLISH_ARTIFACT = Operation[PublishArtifactRequest, ArtifactPublication](
+    method="POST",
+    path="/v1/artifact-publications",
+    operation_id="publish_artifact",
+    request_type=PublishArtifactRequest,
+    request_location="body",
+    response_type=ArtifactPublication,
+    success_status=201,
+    summary="Publish one exact Artifact revision into another Scope",
+    tags=("scopes",),
+    responses={
+        201: {"description": "Independent target Artifact and its exact source provenance."},
         404: {"$ref": "#/components/responses/NotFound"},
         409: {"$ref": "#/components/responses/Conflict"},
         401: {"$ref": "#/components/responses/Unauthorized"},

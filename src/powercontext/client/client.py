@@ -31,6 +31,7 @@ from powercontext.http import (
     ApproveArtifactCandidateRequest,
     ArtifactCandidate,
     ArtifactCandidatePage,
+    ArtifactPublication,
     AttachHandoffReportWorkspaceRequest,
     Capabilities,
     CaptureContentSourceRequest,
@@ -91,6 +92,7 @@ from powercontext.http import (
     ProjectPage,
     ProposeExperienceRequest,
     ProposeSkillRequest,
+    PublishArtifactRequest,
     PurgeHandoffReportActivitiesRequest,
     PurgeHandoffReportActivitiesResponse,
     ReadinessResponse,
@@ -156,6 +158,7 @@ from powercontext.http._generated.operations import (
     PREPARE_HANDOFF,
     PROPOSE_EXPERIENCE,
     PROPOSE_SKILL,
+    PUBLISH_ARTIFACT,
     PURGE_HANDOFF_REPORT_ACTIVITIES,
     RECORD_HANDOFF_REPORT_ACTIVITY,
     RECORD_TASK_OUTCOME,
@@ -245,6 +248,11 @@ class PowerContextClient:
         """Read behavior enabled by the assembled runtime."""
 
         return await self._request(GET_CAPABILITIES)
+
+    async def publish_artifact(self, request: PublishArtifactRequest) -> ArtifactPublication:
+        """Deliver one exact Artifact revision into another Scope."""
+
+        return await self._request(PUBLISH_ARTIFACT, request)
 
     async def get_stats(self, request: GetStatsRequest) -> ScopedStats:
         """Read current inventory and bounded usage for one scope."""

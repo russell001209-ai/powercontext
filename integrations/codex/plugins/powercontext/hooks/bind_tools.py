@@ -25,6 +25,7 @@ from settings import CodexPluginSettings  # noqa: E402
 
 _PREFIX = "mcp__powercontext__"
 _CONTROL_OPERATIONS = frozenset({"set_scope_binding", "clear_scope_binding"})
+_HOST_OPERATIONS = frozenset({"create_scope", "get_scope", "list_scopes", "publish_artifact"})
 _SCOPE_BOUND_OPERATIONS = frozenset({
     "acknowledge_handoff",
     "activate_handoff",
@@ -69,6 +70,9 @@ def main(settings: CodexPluginSettings | None = None) -> int:
             updated = dict(tool_input)
             updated["key"] = session_binding_key(session_id)
             _allow(updated)
+            return 0
+        if operation in _HOST_OPERATIONS:
+            _allow(dict(tool_input))
             return 0
         if operation not in _SCOPE_BOUND_OPERATIONS:
             return 0

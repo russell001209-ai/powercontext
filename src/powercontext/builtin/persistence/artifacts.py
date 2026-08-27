@@ -240,6 +240,37 @@ class ArtifactRepository:
             revisions.append(await self._decode_row(connection, row))
         return tuple(revisions)
 
+    async def copy_exact(
+        self,
+        connection: AsyncConnection,
+        target_scope_id: str,
+        target_artifact_id: str,
+        source: Artifact[Any],
+        /,
+    ) -> Artifact[Any]:
+        """Create an independent target lifecycle from one exact source revision."""
+
+        _require_scope(target_scope_id)
+        artifact_type = self._artifact_type(source.family)
+        ref = ArtifactRef(family=source.family, artifact_id=target_artifact_id, revision=1)
+        copied = await self._insert_revision(
+            connection,
+            target_scope_id,
+            artifact_type,
+            ref,
+            source.content,
+            ArtifactLineage(),
+        )
+        await connection.execute(
+            insert(ARTIFACT_HEADS_TABLE).values(
+                scope_id=target_scope_id,
+                family=ref.family,
+                artifact_id=ref.artifact_id,
+                revision=ref.revision,
+            )
+        )
+        return copied
+
     async def _insert_revision(
         self,
         connection: AsyncConnection,

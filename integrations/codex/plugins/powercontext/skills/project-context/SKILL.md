@@ -27,6 +27,15 @@ Then use `set_scope_binding`; the integration replaces its binding key with the
 current Codex Session identity. Reuse an existing Scope instead when the work
 does not need independent isolation, continuation, delivery, or observation.
 
+## Deliver selected material
+
+Use `publish_artifact` only when the user has selected an exact Artifact
+revision for delivery into another Scope. Supply the complete source address,
+the target Scope, and a stable idempotency key. Publication creates an
+independent target Artifact and does not move Sources, other revisions, or
+other state from the source Scope. Never publish personal information,
+debugging fragments, rejected results, or an inferred `latest` revision.
+
 ## Read
 
 - Use `search_memory` with a focused query, `mode: "auto"`, and no more than

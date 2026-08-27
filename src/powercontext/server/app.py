@@ -38,7 +38,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.types import Lifespan
 
 from powercontext._logging import log_safely
-from powercontext.artifacts import ArtifactRef
+from powercontext.artifacts import ArtifactAddress, ArtifactRef
 from powercontext.builtin.artifacts.experience import Experience
 from powercontext.builtin.artifacts.handoff import (
     HandoffEvidenceUnavailableError,
@@ -97,6 +97,13 @@ from powercontext.builtin.handoff_report.repository import (
     InvalidActivityRepositoryArgumentError,
 )
 from powercontext.builtin.inference.errors import InferenceTimeoutError, InferenceUnavailableError
+from powercontext.builtin.publication import (
+    ArtifactPublicationApplication,
+    ArtifactPublicationConflictError,
+)
+from powercontext.builtin.publication import (
+    ArtifactPublicationRequest as DomainArtifactPublicationRequest,
+)
 from powercontext.builtin.review import (
     ArtifactTargetConflictError,
     CandidateConflictError,
@@ -306,6 +313,7 @@ from powercontext.http import (
     ProjectPage,
     ProposeExperienceRequest,
     ProposeSkillRequest,
+    PublishArtifactRequest,
     PurgeHandoffReportActivitiesRequest,
     PurgeHandoffReportActivitiesResponse,
     ReadinessResponse,
@@ -340,6 +348,9 @@ from powercontext.http import (
     WorkSourceReceipt,
     WorkstreamDescriptor,
     WorkstreamPage,
+)
+from powercontext.http import (
+    ArtifactPublication as TransportArtifactPublication,
 )
 from powercontext.http import (
     HandoffActivation as TransportHandoffActivation,
@@ -402,6 +413,7 @@ from powercontext.http._generated.operations import (
     PREPARE_HANDOFF,
     PROPOSE_EXPERIENCE,
     PROPOSE_SKILL,
+    PUBLISH_ARTIFACT,
     PURGE_HANDOFF_REPORT_ACTIVITIES,
     RECORD_HANDOFF_REPORT_ACTIVITY,
     RECORD_TASK_OUTCOME,
@@ -584,6 +596,7 @@ class _StatisticsApplication(Protocol):
 
 class ServerApplication(Protocol):
     scopes: ScopeApplication | None
+    publications: ArtifactPublicationApplication | None
     sources: _SourceApplication
     context: _ContextApplication
     experience: _ExperienceApplication
@@ -696,6 +709,7 @@ def create_app(
     _add_route(app, RESOLVE_SCOPE_BINDING, resolve_scope_binding)
     _add_route(app, SET_SCOPE_BINDING, set_scope_binding)
     _add_route(app, CLEAR_SCOPE_BINDING, clear_scope_binding)
+    _add_route(app, PUBLISH_ARTIFACT, publish_artifact)
     _add_route(app, GET_STATS, get_stats)
     if handoff_report_enabled:
         _add_route(app, CREATE_HANDOFF_REPORT_PROJECT, create_handoff_report_project)
@@ -893,6 +907,23 @@ async def clear_scope_binding(
     scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
 ) -> ClearScopeBindingResponse:
     return ClearScopeBindingResponse(cleared=await scopes.clear_binding(_domain_binding_key(request.key)))
+
+
+async def publish_artifact(
+    request: PublishArtifactRequest,
+    publications: Annotated[ArtifactPublicationApplication, Depends(_require_publication_application)],
+) -> TransportArtifactPublication:
+    result = await publications.publish(
+        DomainArtifactPublicationRequest(
+            source=ArtifactAddress(
+                scope_id=request.source.scope_id,
+                artifact=ArtifactRef.model_validate(request.source.artifact.model_dump(mode="json")),
+            ),
+            target_scope_id=request.target_scope_id,
+            idempotency_key=request.idempotency_key,
+        )
+    )
+    return TransportArtifactPublication.model_validate(result.model_dump(mode="json"))
 
 
 async def get_stats(
@@ -1506,6 +1537,13 @@ def _require_scope_application(request: Request) -> ScopeApplication:
     return application.scopes
 
 
+def _require_publication_application(request: Request) -> ArtifactPublicationApplication:
+    application = _require_application(request)
+    if application.publications is None:
+        raise _RuntimeNotReadyError
+    return application.publications
+
+
 def _require_handoff_report_application(request: Request) -> HandoffReportApplication:
     application = _require_application(request)
     if application.handoff_report is None:
@@ -1732,6 +1770,13 @@ def _map_error(error: Exception) -> tuple[int, str, str, dict[str, Any] | None]:
 
 
 def _map_scope_error(error: Exception) -> tuple[int, str, str, dict[str, Any] | None] | None:
+    if isinstance(error, ArtifactPublicationConflictError):
+        return (
+            status.HTTP_409_CONFLICT,
+            "artifact_publication_conflict",
+            "The publication key identifies a different source Artifact.",
+            None,
+        )
     if isinstance(error, (ScopeNotFoundError, ScopeBindingNotFoundError)):
         return status.HTTP_404_NOT_FOUND, "scope_not_found", "The requested Scope was not found.", None
     if isinstance(error, ScopeVersionConflictError):

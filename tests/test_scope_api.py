@@ -106,3 +106,41 @@ def test_scope_http_flow_rejects_stale_metadata_and_invalid_selection(tmp_path) 
             json={"selection": {"mode": "exact", "scope_ids": []}},
         )
         assert invalid.status_code == 422
+
+
+def test_scope_http_flow_publishes_one_exact_artifact(tmp_path) -> None:
+    app = create_server_app(
+        settings=ServerSettings(
+            database=SQLiteConfig(url=f"sqlite+aiosqlite:///{tmp_path / 'runtime.db'}"),
+            mcp=McpConfig(enabled=False),
+        )
+    )
+
+    with TestClient(app) as client:
+        source_scope_id = client.post(
+            "/v1/scopes",
+            json={"title": "Source", "summary": "Working state", "idempotency_key": "source"},
+        ).json()["scope_id"]
+        target_scope_id = client.post(
+            "/v1/scopes",
+            json={"title": "Target", "summary": "Accepted state", "idempotency_key": "target"},
+        ).json()["scope_id"]
+        memory = client.post(
+            "/v1/memory/remember",
+            json={"scope_id": source_scope_id, "kind": "decision", "text": "Publish the accepted decision."},
+        ).json()["memory"]
+        request = {
+            "source": {"scope_id": source_scope_id, "artifact": memory},
+            "target_scope_id": target_scope_id,
+            "idempotency_key": "accepted-decision",
+        }
+
+        created = client.post("/v1/artifact-publications", json=request)
+        repeated = client.post("/v1/artifact-publications", json=request)
+
+        assert created.status_code == 201
+        assert repeated.status_code == 201
+        assert created.json() == repeated.json()
+        assert created.json()["source"] == request["source"]
+        assert created.json()["target"]["scope_id"] == target_scope_id
+        assert created.json()["target"]["artifact"]["revision"] == 1

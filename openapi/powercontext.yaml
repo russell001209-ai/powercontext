@@ -120,6 +120,32 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "422":
           $ref: "#/components/responses/InvalidRequest"
+  /v1/artifact-publications:
+    post:
+      tags: [scopes]
+      summary: Publish one exact Artifact revision into another Scope
+      operationId: publish_artifact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishArtifactRequest"
+      responses:
+        "201":
+          description: Independent target Artifact and its exact source provenance.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactPublication"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
   /v1/scopes/get:
     post:
       tags: [scopes]
@@ -2037,6 +2063,47 @@ components:
         revision:
           type: integer
           minimum: 1
+    ArtifactAddress:
+      type: object
+      additionalProperties: false
+      required: [scope_id, artifact]
+      properties:
+        scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+        artifact:
+          $ref: "#/components/schemas/ArtifactReference"
+    PublishArtifactRequest:
+      type: object
+      additionalProperties: false
+      required: [source, target_scope_id, idempotency_key]
+      properties:
+        source:
+          $ref: "#/components/schemas/ArtifactAddress"
+        target_scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+    ArtifactPublication:
+      type: object
+      additionalProperties: false
+      required: [source, target, content_digest]
+      properties:
+        source:
+          $ref: "#/components/schemas/ArtifactAddress"
+        target:
+          $ref: "#/components/schemas/ArtifactAddress"
+        content_digest:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
     ScopeExternalReference:
       type: object
       additionalProperties: false

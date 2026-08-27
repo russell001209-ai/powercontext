@@ -22,6 +22,7 @@ export const OPERATIONS = {
   get_capabilities: { method: 'GET', path: '/v1/capabilities', location: null, scope: false },
   list_scopes: { method: 'GET', path: '/v1/scopes', location: null, scope: false },
   create_scope: { method: 'POST', path: '/v1/scopes', location: "body", scope: false },
+  publish_artifact: { method: 'POST', path: '/v1/artifact-publications', location: "body", scope: false },
   get_scope: { method: 'POST', path: '/v1/scopes/get', location: "body", scope: true },
   update_scope: { method: 'POST', path: '/v1/scopes/update', location: "body", scope: true },
   get_default_scope: { method: 'GET', path: '/v1/scopes/default', location: null, scope: false },
