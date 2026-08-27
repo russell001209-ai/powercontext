@@ -1,0 +1,137 @@
+# Copyright (c) 2026 OceanBase.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+
+from __future__ import annotations
+
+import io
+import json
+import sys
+from types import ModuleType
+
+import pytest
+
+
+def test_pre_tool_hook_overwrites_agent_scope_with_session_binding(
+    bind_tools_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        bind_tools_module,
+        "resolve_scope_id",
+        lambda _cwd, *, session_id, **_kwargs: f"scope-for-{session_id}",
+    )
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps({
+                "hook_event_name": "PreToolUse",
+                "session_id": "session-a",
+                "cwd": "/workspace",
+                "tool_name": "mcp__powercontext__remember_memory",
+                "tool_input": {"scope_id": "agent-selected", "kind": "decision", "text": "Use Scope binding."},
+            })
+        ),
+    )
+    output = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", output)
+
+    assert bind_tools_module.main() == 0
+    result = json.loads(output.getvalue())["hookSpecificOutput"]
+    assert result["permissionDecision"] == "allow"
+    assert result["updatedInput"]["scope_id"] == "scope-for-session-a"
+    assert result["updatedInput"]["text"] == "Use Scope binding."
+
+
+def test_pre_tool_hook_fixes_control_binding_to_current_session(
+    bind_tools_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps({
+                "hook_event_name": "PreToolUse",
+                "session_id": "session-a",
+                "cwd": "/workspace",
+                "tool_name": "mcp__powercontext__set_scope_binding",
+                "tool_input": {
+                    "key": {"integration": "other", "kind": "session", "external_id": "session-b"},
+                    "scope_id": "target-scope",
+                },
+            })
+        ),
+    )
+    output = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", output)
+
+    assert bind_tools_module.main() == 0
+    updated = json.loads(output.getvalue())["hookSpecificOutput"]["updatedInput"]
+    assert updated == {
+        "key": {"integration": "codex", "kind": "session", "external_id": "session-a"},
+        "scope_id": "target-scope",
+    }
+
+
+def test_pre_tool_hook_denies_data_plane_when_binding_is_unavailable(
+    bind_tools_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*_args, **_kwargs):
+        raise bind_tools_module.ScopeBindingError
+
+    monkeypatch.setattr(bind_tools_module, "resolve_scope_id", fail)
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps({
+                "hook_event_name": "PreToolUse",
+                "session_id": "session-a",
+                "cwd": "/workspace",
+                "tool_name": "mcp__powercontext__search_memory",
+                "tool_input": {"query": "current state"},
+            })
+        ),
+    )
+    output = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", output)
+
+    assert bind_tools_module.main() == 0
+    result = json.loads(output.getvalue())["hookSpecificOutput"]
+    assert result["permissionDecision"] == "deny"
+
+
+def test_session_start_fixes_default_or_workspace_resolution(
+    session_binding_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    def resolve(cwd, **kwargs):
+        calls.append({"cwd": cwd, **kwargs})
+        return "scope-a"
+
+    monkeypatch.setattr(session_binding_module, "resolve_scope_id", resolve)
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps({
+                "hook_event_name": "SessionStart",
+                "session_id": "session-a",
+                "cwd": "/workspace",
+            })
+        ),
+    )
+
+    assert session_binding_module.main() == 0
+    assert calls[0]["cwd"] == "/workspace"
+    assert calls[0]["session_id"] == "session-a"
+    assert calls[0]["persist_session"] is True

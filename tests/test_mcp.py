@@ -109,7 +109,7 @@ def run_async(operation: Callable[[], Coroutine[Any, Any, ResultT]]) -> ResultT:
     return asyncio.run(operation())
 
 
-def test_mcp_exposes_only_the_agent_facing_server_operations() -> None:
+def test_mcp_exposes_only_data_plane_and_integration_control_operations() -> None:
     async def inspect_components() -> tuple[list[str], int, int]:
         async with Client(create_mcp_server(create_app())) as client:
             tools = await client.list_tools()
@@ -124,15 +124,19 @@ def test_mcp_exposes_only_the_agent_facing_server_operations() -> None:
         "acknowledge_handoff",
         "approve_artifact_candidate",
         "capture_content_source",
+        "clear_scope_binding",
         "commit_handoff",
         "continue_handoff",
+        "create_scope",
         "create_work_contract",
         "finalize_handoff",
         "get_artifact_candidate",
         "get_memory_entry",
+        "get_scope",
         "handoff_current_work",
         "list_artifact_candidates",
         "list_memory_entries",
+        "list_scopes",
         "reject_artifact_candidate",
         "record_task_outcome",
         "remember_memory",
@@ -140,6 +144,7 @@ def test_mcp_exposes_only_the_agent_facing_server_operations() -> None:
         "revise_artifact_candidate",
         "revise_memory_entry",
         "search_memory",
+        "set_scope_binding",
     }
     assert resource_count == 0
     assert prompt_count == 0

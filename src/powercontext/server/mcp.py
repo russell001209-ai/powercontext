@@ -36,20 +36,24 @@ from powercontext.http._generated.operations import (
     ACTIVATE_HANDOFF,
     APPROVE_ARTIFACT_CANDIDATE,
     CAPTURE_CONTENT_SOURCE,
+    CLEAR_SCOPE_BINDING,
     COMMIT_HANDOFF,
     CONTINUE_HANDOFF,
+    CREATE_SCOPE,
     CREATE_WORK_CONTRACT,
     FINALIZE_HANDOFF,
     GET_ARTIFACT_CANDIDATE,
     GET_HANDOFF_REPORT,
     GET_HANDOFF_REPORT_WORKSPACE,
     GET_MEMORY_ENTRY,
+    GET_SCOPE,
     HANDOFF_CURRENT_WORK,
     LIST_ARTIFACT_CANDIDATES,
     LIST_HANDOFF_REPORT_KNOWN_SCOPES,
     LIST_HANDOFF_REPORT_PROJECTS,
     LIST_HANDOFF_REPORT_WORKSTREAMS,
     LIST_MEMORY_ENTRIES,
+    LIST_SCOPES,
     RECORD_TASK_OUTCOME,
     REJECT_ARTIFACT_CANDIDATE,
     REMEMBER_MEMORY,
@@ -57,6 +61,7 @@ from powercontext.http._generated.operations import (
     REVISE_ARTIFACT_CANDIDATE,
     REVISE_MEMORY_ENTRY,
     SEARCH_MEMORY,
+    SET_SCOPE_BINDING,
 )
 from powercontext.server.access import McpAccessLogMiddleware
 from powercontext.server.app import REQUEST_ID_HEADER
@@ -95,6 +100,11 @@ _MCP_OPERATION_IDS = frozenset({
     APPROVE_ARTIFACT_CANDIDATE.operation_id,
     REJECT_ARTIFACT_CANDIDATE.operation_id,
     REVISE_ARTIFACT_CANDIDATE.operation_id,
+    CREATE_SCOPE.operation_id,
+    LIST_SCOPES.operation_id,
+    GET_SCOPE.operation_id,
+    SET_SCOPE_BINDING.operation_id,
+    CLEAR_SCOPE_BINDING.operation_id,
 })
 _MCP_READ_ONLY_OPERATION_IDS = frozenset({
     CONTINUE_HANDOFF.operation_id,
@@ -106,6 +116,8 @@ _MCP_READ_ONLY_OPERATION_IDS = frozenset({
     GET_HANDOFF_REPORT_WORKSPACE.operation_id,
     LIST_ARTIFACT_CANDIDATES.operation_id,
     GET_ARTIFACT_CANDIDATE.operation_id,
+    LIST_SCOPES.operation_id,
+    GET_SCOPE.operation_id,
 })
 
 
