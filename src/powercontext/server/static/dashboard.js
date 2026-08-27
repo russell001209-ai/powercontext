@@ -40,6 +40,9 @@ const translations = {
     tokenLabel: "Server token",
     continue: "Continue",
     selectScope: "Scope",
+    allScopes: "All",
+    subtreeView: "{title} and descendants",
+    exactFocus: "Focus: {title}",
     period30: "Last 30 days",
     estimatedReduction: "Estimated token reduction",
     sources: "Sources",
@@ -82,7 +85,7 @@ const translations = {
     requestFailed: "The Dashboard request failed with HTTP {status}.",
     serverUnavailable: "The Server is unavailable.",
     retry: "Retry",
-    noScopes: "No Dashboard scopes are configured.",
+    noScopes: "No Scopes are available.",
     scopeUnavailable: "The selected scope is not available.",
     scopeOverview: "Scope overview"
   },
@@ -101,6 +104,9 @@ const translations = {
     tokenLabel: "服务器访问令牌",
     continue: "继续",
     selectScope: "作用域",
+    allScopes: "全部",
+    subtreeView: "{title}及其下级",
+    exactFocus: "聚焦：{title}",
     period30: "过去 30 天",
     estimatedReduction: "预估令牌减少量",
     sources: "数据源",
@@ -143,7 +149,7 @@ const translations = {
     requestFailed: "仪表盘请求失败（HTTP {status}）。",
     serverUnavailable: "服务器无法访问。",
     retry: "重试",
-    noScopes: "未配置仪表盘作用域。",
+    noScopes: "当前没有可用作用域。",
     scopeUnavailable: "选中的作用域不可用。",
     scopeOverview: "作用域概览"
   }
@@ -230,11 +236,10 @@ async function authenticate(token, scopeId = "") {
       showPageStatus("noScopes", {}, true);
       return;
     }
-    const selectedScopeId = currentScopes.some((scope) => scope.scope_id === scopeId)
-      ? scopeId
-      : currentScopes[0].scope_id;
-    currentScopeId = selectedScopeId;
-    await loadStatistics(token, selectedScopeId, request);
+    const choices = selectionChoices(currentScopes);
+    const selectedKey = choices.some((choice) => choice.key === scopeId) ? scopeId : "all";
+    currentScopeId = selectedKey;
+    await loadStatistics(token, selectedKey, request);
   } catch (error) {
     if (request.isCurrent()) {
       showPageStatus("serverUnavailable", {}, true);
@@ -256,10 +261,16 @@ async function loadStatistics(token, scopeId, request = null) {
   currentScopeId = scopeId;
   scopeSelect.disabled = true;
   try {
-    const url = new URL("/v1/stats", window.location.origin);
-    url.searchParams.set("scope_id", scopeId);
-    url.searchParams.set("period", "30d");
-    const response = await fetchWithBearer(url, token);
+    const choice = selectionChoices(currentScopes).find((item) => item.key === scopeId);
+    if (!choice) {
+      showPageStatus("scopeUnavailable", {}, true);
+      return;
+    }
+    const response = await fetchWithBearer("/v1/stats", token, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({selection: choice.selection, period: "30d"})
+    });
     if (!activeRequest.isCurrent()) {
       return;
     }
@@ -276,12 +287,7 @@ async function loadStatistics(token, scopeId, request = null) {
     if (!activeRequest.isCurrent()) {
       return;
     }
-    const selectedScope = currentScopes.find((scope) => scope.scope_id === statistics.scope_id);
-    if (!selectedScope) {
-      showPageStatus("scopeUnavailable", {}, true);
-      return;
-    }
-    renderDashboard({scopes: currentScopes, selectedScope, statistics});
+    renderDashboard({scopes: currentScopes, choice, statistics});
   } catch (error) {
     if (activeRequest.isCurrent()) {
       showPageStatus("serverUnavailable", {}, true);
@@ -349,8 +355,8 @@ function renderDashboard(view) {
   dashboard.hidden = false;
   signOut.hidden = !authenticationRequired;
 
-  renderScopes(view.scopes, statistics.scope_id);
-  setText("dashboard-name", view.selectedScope.display_name);
+  renderScopes(view.scopes, view.choice.key);
+  setText("dashboard-name", view.choice.label);
   setText("as-of", translate("updated", {value: formatDateTime(statistics.as_of)}));
   setText("sources", formatNumber(inventory.sources.total));
   setText("memory-entries", formatNumber(inventory.memory.entries.total));
@@ -368,15 +374,34 @@ function renderDashboard(view) {
   renderTrend(recall.daily);
 }
 
-function renderScopes(scopes, selectedScopeId) {
+function renderScopes(scopes, selectedKey) {
   scopeSelect.replaceChildren();
-  for (const scope of scopes) {
+  for (const choice of selectionChoices(scopes)) {
     const option = document.createElement("option");
-    option.value = scope.scope_id;
-    option.textContent = `${scope.display_name} (${scope.scope_id})`;
-    option.selected = scope.scope_id === selectedScopeId;
+    option.value = choice.key;
+    option.textContent = choice.label;
+    option.selected = choice.key === selectedKey;
     scopeSelect.appendChild(option);
   }
+}
+
+function selectionChoices(scopes) {
+  const choices = [{key: "all", label: translate("allScopes"), selection: {mode: "all"}}];
+  for (const scope of scopes.filter((item) => item.parent_scope_id === null)) {
+    choices.push({
+      key: `subtree:${scope.scope_id}`,
+      label: translate("subtreeView", {title: scope.display_name}),
+      selection: {mode: "subtree", root_scope_id: scope.scope_id}
+    });
+  }
+  for (const scope of scopes) {
+    choices.push({
+      key: `exact:${scope.scope_id}`,
+      label: translate("exactFocus", {title: scope.display_name}),
+      selection: {mode: "exact", scope_ids: [scope.scope_id]}
+    });
+  }
+  return choices;
 }
 
 function renderArtifactFamilies(inventory) {

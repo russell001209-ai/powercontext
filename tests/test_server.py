@@ -134,7 +134,6 @@ def test_settings_load_server_environment(monkeypatch) -> None:
     assert settings.mcp.enabled is False
     assert settings.mcp.path == "/context"
     assert settings.dashboard.enabled is True
-    assert settings.dashboard.scopes == []
     assert settings.external_skills.host_id == "workstation-1"
     assert settings.external_skills.targets[0].target_id == "codex-project"
     assert settings.external_skills.targets[0].path.as_posix() == "/srv/project/.agents/skills"

@@ -28,7 +28,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, TypeVar, cast
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Query, Request, Response, status
+from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from opentelemetry.trace import SpanKind
@@ -336,6 +336,7 @@ from powercontext.http import (
     ScopeDescriptor,
     ScopedStats,
     ScopePage,
+    ScopeSelection,
     SearchMemoryRequest,
     SearchMemoryResponse,
     SetDefaultScopeRequest,
@@ -592,6 +593,13 @@ class _ScopedStatisticsApplication(Protocol):
 
 class _StatisticsApplication(Protocol):
     def for_scope(self, scope_id: str, /) -> _ScopedStatisticsApplication: ...
+
+    async def overview(
+        self,
+        selection: DomainScopeSelection,
+        *,
+        period: RuntimeStatisticsPeriod,
+    ) -> RuntimeStatistics: ...
 
 
 class ServerApplication(Protocol):
@@ -872,11 +880,7 @@ async def resolve_scope_selection(
     request: ResolveScopeSelectionRequest,
     scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
 ) -> ScopePage:
-    selection = DomainScopeSelection(
-        mode=request.selection.mode.value,
-        scope_ids=tuple(scope_id.root for scope_id in request.selection.scope_ids),
-        root_scope_id=request.selection.root_scope_id,
-    )
+    selection = _domain_scope_selection(request.selection)
     return ScopePage(items=[_scope_descriptor_response(scope) for scope in await scopes.resolve_selection(selection)])
 
 
@@ -927,13 +931,13 @@ async def publish_artifact(
 
 
 async def get_stats(
-    request: Annotated[GetStatsRequest, Query()],
+    request: GetStatsRequest,
     response: Response,
     application: Annotated[ServerApplication, Depends(_require_application)],
 ) -> ScopedStats:
     response.headers["Cache-Control"] = "no-store"
-    result = await application.statistics.for_scope(request.scope_id).overview(
-        period=RuntimeStatisticsPeriod(request.period.value)
+    result = await application.statistics.overview(
+        _domain_scope_selection(request.selection), period=RuntimeStatisticsPeriod(request.period.value)
     )
     return mapping.statistics_response(result)
 
@@ -1568,6 +1572,14 @@ def _domain_binding_key(value: ScopeBindingKey) -> DomainScopeBindingKey:
         integration=value.integration,
         kind=value.kind,
         external_id=value.external_id,
+    )
+
+
+def _domain_scope_selection(value: ScopeSelection) -> DomainScopeSelection:
+    return DomainScopeSelection(
+        mode=value.mode.value,
+        scope_ids=tuple(scope_id.root for scope_id in value.scope_ids),
+        root_scope_id=value.root_scope_id,
     )
 
 

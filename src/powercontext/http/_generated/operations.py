@@ -1178,18 +1178,18 @@ REVISE_ARTIFACT_CANDIDATE = Operation[ReviseArtifactCandidateRequest, ArtifactCa
 )
 
 GET_STATS = Operation[GetStatsRequest, ScopedStats](
-    method="GET",
+    method="POST",
     path="/v1/stats",
     operation_id="get_stats",
     request_type=GetStatsRequest,
-    request_location="query",
+    request_location="body",
     response_type=ScopedStats,
     success_status=200,
-    summary="Get scoped product statistics",
+    summary="Aggregate product statistics over a Scope selection",
     tags=("stats",),
     responses={
         200: {
-            "description": "Current inventory, model usage, and recall token estimates for the scope.",
+            "description": "Current inventory, model usage, and recall token estimates for the frozen Scope set.",
             "headers": {
                 "X-PowerContext-Request-ID": {"$ref": "#/components/headers/RequestId"},
                 "Cache-Control": {

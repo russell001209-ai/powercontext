@@ -139,7 +139,7 @@ from powercontext.builtin.runtime.readiness import (
     RuntimeReadinessChecks,
 )
 from powercontext.builtin.runtime.statistics import RelationalScopedStatistics
-from powercontext.builtin.scope import ScopeApplication, ScopeNotFoundError
+from powercontext.builtin.scope import ScopeApplication, ScopeNotFoundError, ScopeSelection
 from powercontext.builtin.sources import (
     ContentCapture,
     ContentSource,
@@ -154,6 +154,7 @@ from powercontext.builtin.statistics import (
     Statistics,
     StatisticsPeriod,
 )
+from powercontext.builtin.statistics.aggregation import aggregate_statistics
 from powercontext.builtin.work import (
     HANDOFF_BOUNDARY_SOURCE_KIND,
     HANDOFF_RECEIPT_SOURCE_KIND,
@@ -328,6 +329,27 @@ class StatisticsApplication:
 
     def for_scope(self, scope_id: str, /) -> ScopedStatisticsApplication:
         return ScopedStatisticsApplication(self._runtime, scope_id)
+
+    async def overview(
+        self,
+        selection: ScopeSelection,
+        *,
+        period: StatisticsPeriod = StatisticsPeriod.THIRTY_DAYS,
+    ) -> Statistics:
+        if self._runtime.scopes is None:
+            raise _RuntimeStateError("statistics")
+        async with self._runtime._operation():
+            resolved = await self._runtime.scopes.resolve_selection(selection)
+            captured_at = self._runtime._clock()
+            snapshots = tuple([
+                await self._runtime._statistics(scope.scope_id).overview(period, captured_at) for scope in resolved
+            ])
+        return aggregate_statistics(
+            selection,
+            tuple(scope.scope_id for scope in resolved),
+            snapshots,
+            captured_at,
+        )
 
 
 class ScopedContextApplication:

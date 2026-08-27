@@ -163,14 +163,14 @@ def test_capture_operation_declares_its_typed_accepted_exchange() -> None:
     assert CAPTURE_CONTENT_SOURCE.success_status == 202
 
 
-def test_stats_operation_exposes_dashboard_ready_scoped_values() -> None:
-    assert GET_STATS.method == "GET"
+def test_stats_operation_exposes_dashboard_ready_selection_values() -> None:
+    assert GET_STATS.method == "POST"
     assert GET_STATS.path == "/v1/stats"
     assert GET_STATS.request_type is GetStatsRequest
-    assert GET_STATS.request_location == "query"
+    assert GET_STATS.request_location == "body"
     assert GET_STATS.response_type is ScopedStats
     assert GET_STATS.success_status == 200
-    assert GetStatsRequest(scope_id="project").period is StatsPeriod.FIELD_30D
+    assert GetStatsRequest.model_validate({"selection": {"mode": "all"}}).period is StatsPeriod.FIELD_30D
 
     contract = yaml.safe_load(CONTRACT_PATH.read_text())
     schemas = contract["components"]["schemas"]
@@ -179,10 +179,11 @@ def test_stats_operation_exposes_dashboard_ready_scoped_values() -> None:
     usage_value = schemas["ModelUsageValue"]
     recall = schemas["RecallTokenStatistics"]
 
-    operation = contract["paths"]["/v1/stats"]["get"]
-    assert "requestBody" not in operation
-    assert [parameter["name"] for parameter in operation["parameters"]] == ["scope_id", "period"]
-    assert set(stats["properties"]) == {"scope_id", "as_of", "inventory", "usage", "recall"}
+    operation = contract["paths"]["/v1/stats"]["post"]
+    assert operation["requestBody"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/GetStatsRequest"
+    }
+    assert set(stats["properties"]) == {"selection", "scope_ids", "as_of", "inventory", "usage", "recall"}
     assert usage["properties"]["by_purpose"]["maxItems"] == 16
     assert usage["properties"]["daily"]["maxItems"] == 30
     assert usage_value["properties"]["input_tokens"]["nullable"] is True

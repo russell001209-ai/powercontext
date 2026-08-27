@@ -58,7 +58,7 @@ def test_js_operations_record_method_path_location_and_scope() -> None:
         "location": None,
         "scope": False,
     }
-    assert by_id["get_stats"]["location"] == "query"
+    assert by_id["get_stats"]["location"] == "body"
     assert by_id["remember_memory"]["location"] == "body"
     assert by_id["remember_memory"]["scope"] is True
 

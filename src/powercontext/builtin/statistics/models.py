@@ -23,6 +23,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from powercontext.builtin.inference import TokenEstimatorProfile
+from powercontext.builtin.scope import ScopeSelection
 
 
 class StatisticsPeriod(StrEnum):
@@ -229,9 +230,10 @@ class RecallTokenStatistics(BaseModel):
 
 
 class Statistics(BaseModel):
-    """Current inventory and bounded model usage for one scope."""
+    """Current inventory and bounded model usage for one frozen Scope selection."""
 
-    scope_id: str
+    selection: ScopeSelection
+    scope_ids: tuple[str, ...]
     as_of: datetime
     inventory: InventoryStatistics
     usage: UsageStatistics

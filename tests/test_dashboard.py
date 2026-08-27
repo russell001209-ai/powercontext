@@ -27,7 +27,6 @@ from powercontext.server.factory import create_server_app
 from powercontext.server.settings import (
     BearerAuthConfig,
     DashboardConfig,
-    DashboardScopeConfig,
     McpConfig,
     ServerSettings,
 )
@@ -56,7 +55,6 @@ def test_dashboard_is_enabled_by_default_without_authentication_or_scopes(tmp_pa
         scopes = client.get("/dashboard/scopes")
 
     assert settings.dashboard.enabled is True
-    assert settings.dashboard.scopes == []
     assert home.status_code == 200
     assert skills.status_code == 200
     assert review.status_code == 200
@@ -65,7 +63,9 @@ def test_dashboard_is_enabled_by_default_without_authentication_or_scopes(tmp_pa
     assert 'data-server-session="active"' in home.text
     assert 'data-server-auth-required="false"' in home.text
     assert scopes.status_code == 200
-    assert scopes.json() == []
+    assert scopes.json()[0]["display_name"] == "Default"
+    assert scopes.json()[0]["summary"] == "Default context"
+    assert scopes.json()[0]["parent_scope_id"] is None
 
 
 def test_dashboard_can_be_disabled_explicitly(tmp_path) -> None:
@@ -118,19 +118,23 @@ def test_dashboard_is_the_authenticated_server_ui_entry(tmp_path) -> None:
                 enabled=True,
                 token=SecretStr("dashboard-secret"),
             ),
-            dashboard=DashboardConfig(
-                enabled=True,
-                scopes=[
-                    DashboardScopeConfig(scope_id="person:psiace", display_name="PsiACE"),
-                    DashboardScopeConfig(scope_id="project:powercontext", display_name="PowerContext"),
-                ],
-            ),
+            dashboard=DashboardConfig(enabled=True),
             database=SQLiteConfig(url=f"sqlite+aiosqlite:///{tmp_path / 'dashboard.db'}"),
             mcp=McpConfig(enabled=False),
         )
     )
 
     with TestClient(app) as client:
+        first_scope = client.post(
+            "/v1/scopes",
+            headers=_AUTH_HEADERS,
+            json={"title": "PsiACE", "summary": "Personal context", "idempotency_key": "psiace"},
+        ).json()
+        second_scope = client.post(
+            "/v1/scopes",
+            headers=_AUTH_HEADERS,
+            json={"title": "PowerContext", "summary": "Repository context", "idempotency_key": "powercontext"},
+        ).json()
         home = client.get("/")
         skills = client.get("/skills")
         review = client.get("/reviews")
@@ -188,10 +192,10 @@ def test_dashboard_is_the_authenticated_server_ui_entry(tmp_path) -> None:
     assert 'id="review-revision-title"' in review.text
     assert 'id="review-publish-dialog"' in review.text
     assert "review.js?v=agent-targets-v1" in review.text
-    assert scopes.json() == [
-        {"scope_id": "person:psiace", "display_name": "PsiACE"},
-        {"scope_id": "project:powercontext", "display_name": "PowerContext"},
-    ]
+    returned = {item["scope_id"]: item for item in scopes.json()}
+    assert returned[first_scope["scope_id"]]["display_name"] == "PsiACE"
+    assert returned[first_scope["scope_id"]]["summary"] == "Personal context"
+    assert returned[second_scope["scope_id"]]["display_name"] == "PowerContext"
 
 
 def test_review_publishes_an_approved_managed_skill_into_configured_agent_targets(tmp_path) -> None:
@@ -199,10 +203,7 @@ def test_review_publishes_an_approved_managed_skill_into_configured_agent_target
     claude_skill_root = tmp_path / "repository" / ".claude" / "skills"
     settings = ServerSettings(
         auth=BearerAuthConfig(enabled=True, token=SecretStr("dashboard-secret")),
-        dashboard=DashboardConfig(
-            enabled=True,
-            scopes=[DashboardScopeConfig(scope_id="project:powercontext", display_name="PowerContext")],
-        ),
+        dashboard=DashboardConfig(enabled=True),
         database=SQLiteConfig(url=f"sqlite+aiosqlite:///{tmp_path / 'managed-skill-publish.db'}"),
         external_skills=ExternalSkillsConfig(
             host_id="dashboard-test",
@@ -228,11 +229,16 @@ def test_review_publishes_an_approved_managed_skill_into_configured_agent_target
     app = create_server_app(settings=settings)
 
     with TestClient(app) as client:
+        scope_id = client.post(
+            "/v1/scopes",
+            headers=_AUTH_HEADERS,
+            json={"title": "PowerContext", "summary": "Repository context", "idempotency_key": "powercontext"},
+        ).json()["scope_id"]
         source = client.post(
             "/v1/sources/content",
             headers=_AUTH_HEADERS,
             json={
-                "scope_id": "project:powercontext",
+                "scope_id": scope_id,
                 "source_id": "managed-skill-evidence",
                 "content": "The contract workflow was reviewed and its validation passed.",
             },
@@ -241,7 +247,7 @@ def test_review_publishes_an_approved_managed_skill_into_configured_agent_target
             "/v1/skill/propose",
             headers=_AUTH_HEADERS,
             json={
-                "scope_id": "project:powercontext",
+                "scope_id": scope_id,
                 "proposal": {
                     "name": "review-contract-change",
                     "description": "Use when changing the reviewed public contract.",
@@ -256,13 +262,13 @@ def test_review_publishes_an_approved_managed_skill_into_configured_agent_target
             "/v1/artifact-candidates/approve",
             headers=_AUTH_HEADERS,
             json={
-                "scope_id": "project:powercontext",
+                "scope_id": scope_id,
                 "candidate_id": candidate["candidate_id"],
                 "expected_version": candidate["version"],
             },
         ).json()
         selection = {
-            "scope_id": "project:powercontext",
+            "scope_id": scope_id,
             "candidate_id": approved["candidate_id"],
             "artifact": approved["result_artifact"],
         }
@@ -293,13 +299,13 @@ def test_review_publishes_an_approved_managed_skill_into_configured_agent_target
         registered = client.post(
             "/v1/external-skills/list",
             headers=_AUTH_HEADERS,
-            json={"scope_id": "project:powercontext", "include_unavailable": False},
+            json={"scope_id": scope_id, "include_unavailable": False},
         )
         revision_source = client.post(
             "/v1/sources/content",
             headers=_AUTH_HEADERS,
             json={
-                "scope_id": "project:powercontext",
+                "scope_id": scope_id,
                 "source_id": "managed-skill-revision-evidence",
                 "content": "The packaged contract must also be verified after regeneration.",
             },
@@ -308,7 +314,7 @@ def test_review_publishes_an_approved_managed_skill_into_configured_agent_target
             "/v1/skill/propose",
             headers=_AUTH_HEADERS,
             json={
-                "scope_id": "project:powercontext",
+                "scope_id": scope_id,
                 "proposal": {
                     "name": "review-contract-change",
                     "description": "Use when changing the reviewed public contract.",
@@ -325,13 +331,13 @@ def test_review_publishes_an_approved_managed_skill_into_configured_agent_target
             "/v1/artifact-candidates/approve",
             headers=_AUTH_HEADERS,
             json={
-                "scope_id": "project:powercontext",
+                "scope_id": scope_id,
                 "candidate_id": revision_candidate["candidate_id"],
                 "expected_version": revision_candidate["version"],
             },
         ).json()
         revision_selection = {
-            "scope_id": "project:powercontext",
+            "scope_id": scope_id,
             "candidate_id": revision_approved["candidate_id"],
             "artifact": revision_approved["result_artifact"],
         }

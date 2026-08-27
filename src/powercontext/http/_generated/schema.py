@@ -1251,27 +1251,20 @@ OPENAPI_SCHEMA: dict[str, JsonValue] = {
             }
         },
         "/v1/stats": {
-            "get": {
+            "post": {
                 "tags": ["stats"],
-                "summary": "Get scoped product statistics",
+                "summary": "Aggregate product statistics over a Scope selection",
                 "operationId": "get_stats",
-                "parameters": [
-                    {
-                        "name": "scope_id",
-                        "in": "query",
-                        "required": True,
-                        "schema": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": ".*\\S.*"},
-                    },
-                    {
-                        "name": "period",
-                        "in": "query",
-                        "required": False,
-                        "schema": {"$ref": "#/components/schemas/StatsPeriod"},
-                    },
-                ],
+                "requestBody": {
+                    "content": {"application/json": {"schema": {"$ref": "#/components/schemas/GetStatsRequest"}}},
+                    "required": True,
+                },
                 "responses": {
                     "200": {
-                        "description": "Current inventory, model usage, and recall token estimates for the scope.",
+                        "description": "Current inventory, model "
+                        "usage, and recall token "
+                        "estimates for the frozen "
+                        "Scope set.",
                         "headers": {
                             "X-PowerContext-Request-ID": {"$ref": "#/components/headers/RequestId"},
                             "Cache-Control": {
@@ -2343,7 +2336,8 @@ OPENAPI_SCHEMA: dict[str, JsonValue] = {
             },
             "ScopedStats": {
                 "properties": {
-                    "scope_id": {"type": "string"},
+                    "selection": {"$ref": "#/components/schemas/ScopeSelection"},
+                    "scope_ids": {"items": {"type": "string"}, "type": "array", "uniqueItems": True},
                     "as_of": {"type": "string", "format": "date-time"},
                     "inventory": {"$ref": "#/components/schemas/InventoryStatistics"},
                     "usage": {"$ref": "#/components/schemas/UsageStatistics"},
@@ -2351,16 +2345,16 @@ OPENAPI_SCHEMA: dict[str, JsonValue] = {
                 },
                 "additionalProperties": False,
                 "type": "object",
-                "required": ["scope_id", "as_of", "inventory", "usage", "recall"],
+                "required": ["selection", "scope_ids", "as_of", "inventory", "usage", "recall"],
             },
             "GetStatsRequest": {
                 "properties": {
-                    "scope_id": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                    "selection": {"$ref": "#/components/schemas/ScopeSelection"},
                     "period": {"$ref": "#/components/schemas/StatsPeriod", "default": "30d"},
                 },
                 "additionalProperties": False,
                 "type": "object",
-                "required": ["scope_id"],
+                "required": ["selection"],
             },
             "WorkClaimBasis": {"type": "string", "enum": ["declared", "verified"]},
             "WorkClaim": {

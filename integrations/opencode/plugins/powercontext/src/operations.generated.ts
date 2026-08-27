@@ -65,7 +65,7 @@ export const OPERATIONS = {
   approve_artifact_candidate: { method: 'POST', path: '/v1/artifact-candidates/approve', location: "body", scope: true },
   reject_artifact_candidate: { method: 'POST', path: '/v1/artifact-candidates/reject', location: "body", scope: true },
   revise_artifact_candidate: { method: 'POST', path: '/v1/artifact-candidates/revise', location: "body", scope: true },
-  get_stats: { method: 'GET', path: '/v1/stats', location: "query", scope: true },
+  get_stats: { method: 'POST', path: '/v1/stats', location: "body", scope: false },
   create_handoff_report_project: { method: 'POST', path: '/v1/handoff-reports/projects/create', location: "body", scope: false },
   list_handoff_report_projects: { method: 'POST', path: '/v1/handoff-reports/projects/list', location: "body", scope: false },
   list_handoff_report_known_scopes: { method: 'POST', path: '/v1/handoff-reports/scopes/list-known', location: "body", scope: false },

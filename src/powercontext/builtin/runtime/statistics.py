@@ -31,6 +31,7 @@ from powercontext.builtin.persistence.statistics import (
     StoredModelUsage,
     StoredRecallTokenUsage,
 )
+from powercontext.builtin.scope import ScopeSelection
 from powercontext.builtin.statistics import (
     ArtifactInventoryStatistics,
     CandidateFamilyCount,
@@ -124,7 +125,8 @@ class RelationalScopedStatistics:
         artifacts = tuple(FamilyCount(family=family, total=total) for family, total in stored_inventory.artifacts)
         candidates = _candidate_inventory(stored_inventory.candidates)
         return Statistics(
-            scope_id=self._scope_id,
+            selection=ScopeSelection(mode="exact", scope_ids=(self._scope_id,)),
+            scope_ids=(self._scope_id,),
             as_of=captured_at,
             inventory=InventoryStatistics(
                 sources=SourceInventoryStatistics(

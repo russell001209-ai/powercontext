@@ -1155,7 +1155,8 @@ class ScopedStats(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    scope_id: StrictStr
+    selection: ScopeSelection
+    scope_ids: list[StrictStr]
     as_of: AwareDatetime
     inventory: InventoryStatistics
     usage: UsageStatistics
@@ -1166,7 +1167,7 @@ class GetStatsRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    scope_id: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+    selection: ScopeSelection
     period: StatsPeriod = StatsPeriod.FIELD_30D
 
 
