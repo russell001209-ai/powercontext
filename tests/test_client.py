@@ -24,6 +24,10 @@ from powercontext.client.settings import ClientSettings
 from powercontext.http import (
     CaptureContentSourceRequest,
     GetHandoffReportRequest,
+    ReportFormat,
+    ScopeId,
+    ScopeSelection,
+    ScopeSelectionMode,
 )
 
 
@@ -161,7 +165,10 @@ def test_client_downloads_handoff_report_bytes_and_sets_download_flag() -> None:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http_client:
             client = PowerContextClient("https://memory.example", http_client=http_client)
-            request = GetHandoffReportRequest(scope_id="scope-1")
+            request = GetHandoffReportRequest(
+                selection=ScopeSelection(mode=ScopeSelectionMode.EXACT, scope_ids=[ScopeId("scope-1")]),
+                format=ReportFormat.MARKDOWN,
+            )
             rendered = await client.get_handoff_report(request)
             content = await client.download_handoff_report(request)
 
@@ -169,7 +176,11 @@ def test_client_downloads_handoff_report_bytes_and_sets_download_flag() -> None:
         assert content == b"# Handoff Report\n"
         assert len(requests) == 2
         assert json.loads(requests[0].content)["download"] is False
-        assert json.loads(requests[0].content)["scope_id"] == "scope-1"
+        assert json.loads(requests[0].content)["selection"] == {
+            "mode": "exact",
+            "scope_ids": ["scope-1"],
+            "root_scope_id": None,
+        }
         assert json.loads(requests[1].content)["download"] is True
 
     asyncio.run(scenario())

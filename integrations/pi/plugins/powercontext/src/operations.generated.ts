@@ -66,21 +66,7 @@ export const OPERATIONS = {
   reject_artifact_candidate: { method: 'POST', path: '/v1/artifact-candidates/reject', location: "body", scope: true },
   revise_artifact_candidate: { method: 'POST', path: '/v1/artifact-candidates/revise', location: "body", scope: true },
   get_stats: { method: 'POST', path: '/v1/stats', location: "body", scope: false },
-  create_handoff_report_project: { method: 'POST', path: '/v1/handoff-reports/projects/create', location: "body", scope: false },
-  list_handoff_report_projects: { method: 'POST', path: '/v1/handoff-reports/projects/list', location: "body", scope: false },
-  list_handoff_report_known_scopes: { method: 'POST', path: '/v1/handoff-reports/scopes/list-known', location: "body", scope: false },
-  get_handoff_report_project: { method: 'POST', path: '/v1/handoff-reports/projects/get', location: "body", scope: false },
-  update_handoff_report_project: { method: 'POST', path: '/v1/handoff-reports/projects/update', location: "body", scope: false },
-  register_handoff_report_workstream: { method: 'POST', path: '/v1/handoff-reports/workstreams/register', location: "body", scope: true },
-  list_handoff_report_workstreams: { method: 'POST', path: '/v1/handoff-reports/workstreams/list', location: "body", scope: false },
-  update_handoff_report_workstream: { method: 'POST', path: '/v1/handoff-reports/workstreams/update', location: "body", scope: false },
-  get_handoff_report: { method: 'POST', path: '/v1/handoff-reports/get', location: "body", scope: true },
-  record_handoff_report_activity: { method: 'POST', path: '/v1/handoff-reports/activities/record', location: "body", scope: true },
-  list_handoff_report_activities: { method: 'POST', path: '/v1/handoff-reports/activities/list', location: "body", scope: false },
-  purge_handoff_report_activities: { method: 'POST', path: '/v1/handoff-reports/activities/purge', location: "body", scope: false },
-  get_handoff_report_workspace: { method: 'POST', path: '/v1/handoff-reports/workspace-bindings/get', location: "body", scope: false },
-  attach_handoff_report_workspace: { method: 'POST', path: '/v1/handoff-reports/workspace-bindings/attach', location: "body", scope: false },
-  detach_handoff_report_workspace: { method: 'POST', path: '/v1/handoff-reports/workspace-bindings/detach', location: "body", scope: false },
+  get_handoff_report: { method: 'POST', path: '/v1/handoff-reports/get', location: "body", scope: false },
 } as const
 
 export type OperationId = keyof typeof OPERATIONS

@@ -23,7 +23,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from powercontext.builtin.inference import TokenEstimatorProfile
-from powercontext.builtin.scope import ScopeSelection
+from powercontext.builtin.scope.models import ScopeSelection
 
 
 class StatisticsPeriod(StrEnum):

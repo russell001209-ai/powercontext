@@ -23,7 +23,19 @@ import pytest
 _ROOT = Path(__file__).resolve().parents[1]
 _STATIC = _ROOT / "src" / "powercontext" / "server" / "static"
 _TEMPLATES = _ROOT / "src" / "powercontext" / "server" / "templates"
-_ALLOWED_LATIN = {"Claude", "Code", "Codex", "EN", "HTTP", "Markdown", "OceanBase", "PowerContext"}
+_ALLOWED_LATIN = {
+    "Claude",
+    "Code",
+    "Codex",
+    "EN",
+    "HTTP",
+    "Handoff",
+    "Markdown",
+    "OceanBase",
+    "Parent",
+    "PowerContext",
+    "Scope",
+}
 _CJK = re.compile(r"[\u4e00-\u9fff]")
 _LATIN_WORD = re.compile(r"[A-Za-z]{2,}")
 _PLACEHOLDER = re.compile(r"\{[A-Za-z]+\}")

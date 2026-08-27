@@ -44,14 +44,10 @@ from powercontext.http._generated.operations import (
     FINALIZE_HANDOFF,
     GET_ARTIFACT_CANDIDATE,
     GET_HANDOFF_REPORT,
-    GET_HANDOFF_REPORT_WORKSPACE,
     GET_MEMORY_ENTRY,
     GET_SCOPE,
     HANDOFF_CURRENT_WORK,
     LIST_ARTIFACT_CANDIDATES,
-    LIST_HANDOFF_REPORT_KNOWN_SCOPES,
-    LIST_HANDOFF_REPORT_PROJECTS,
-    LIST_HANDOFF_REPORT_WORKSTREAMS,
     LIST_MEMORY_ENTRIES,
     LIST_SCOPES,
     PUBLISH_ARTIFACT,
@@ -71,7 +67,6 @@ from powercontext.server.context import (
     current_request_id,
     reset_internal_bridge,
 )
-from powercontext.server.handoff_picker import register_handoff_workstream_picker
 from powercontext.server.metrics import McpMetricsMiddleware, ServerMetrics
 from powercontext.server.tracing import McpTracingMiddleware, ServerTracing
 
@@ -93,8 +88,6 @@ _MCP_OPERATION_IDS = frozenset({
     REMEMBER_MEMORY.operation_id,
     REVISE_MEMORY_ENTRY.operation_id,
     GET_HANDOFF_REPORT.operation_id,
-    LIST_HANDOFF_REPORT_KNOWN_SCOPES.operation_id,
-    GET_HANDOFF_REPORT_WORKSPACE.operation_id,
     RETIRE_MEMORY_ENTRY.operation_id,
     LIST_ARTIFACT_CANDIDATES.operation_id,
     GET_ARTIFACT_CANDIDATE.operation_id,
@@ -114,8 +107,6 @@ _MCP_READ_ONLY_OPERATION_IDS = frozenset({
     LIST_MEMORY_ENTRIES.operation_id,
     GET_MEMORY_ENTRY.operation_id,
     GET_HANDOFF_REPORT.operation_id,
-    LIST_HANDOFF_REPORT_KNOWN_SCOPES.operation_id,
-    GET_HANDOFF_REPORT_WORKSPACE.operation_id,
     LIST_ARTIFACT_CANDIDATES.operation_id,
     GET_ARTIFACT_CANDIDATE.operation_id,
     LIST_SCOPES.operation_id,
@@ -141,6 +132,7 @@ def _annotate_mcp_component(
         component.annotations = ToolAnnotations(
             readOnlyHint=True,
             destructiveHint=False,
+            idempotentHint=True,
             openWorldHint=False,
         )
     elif route.operation_id == HANDOFF_CURRENT_WORK.operation_id:
@@ -183,11 +175,6 @@ def create_mcp_server(
         validate_output=False,
     )
     server = FastMCP(name=MCP_SERVER_NAME, providers=[provider])
-    if {
-        LIST_HANDOFF_REPORT_PROJECTS.path,
-        LIST_HANDOFF_REPORT_WORKSTREAMS.path,
-    }.issubset(server_app.openapi()["paths"]):
-        register_handoff_workstream_picker(server, client)
     server.add_middleware(McpTracingMiddleware(resolved_tracing))
     if access_log:
         server.add_middleware(McpAccessLogMiddleware())

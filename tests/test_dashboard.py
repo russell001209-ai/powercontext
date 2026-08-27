@@ -403,119 +403,27 @@ def test_handoff_report_page_is_available_without_the_statistics_dashboard(tmp_p
         disabled_page = client.get("/handoff-reports")
     with TestClient(enabled_app) as client:
         enabled_page = client.get("/handoff-reports")
-        disabled_skills = client.get("/skills")
-        disabled_review = client.get("/reviews")
-        disabled_dashboard = client.get("/")
-        disabled_dashboard_scopes = client.get("/dashboard/scopes", headers=_AUTH_HEADERS)
-        protected_scopes = client.post(
-            "/v1/handoff-reports/scopes/list-known",
-            json={"limit": 100},
+        scopes = client.get("/dashboard/scopes", headers=_AUTH_HEADERS)
+        removed_catalog = client.post(
+            "/v1/handoff-reports/projects/list",
+            headers=_AUTH_HEADERS,
+            json={},
         )
 
     assert disabled_page.status_code == 404
     assert enabled_page.status_code == 200
-    assert disabled_skills.status_code == 404
-    assert disabled_review.status_code == 404
-    assert disabled_dashboard.status_code == 404
-    assert disabled_dashboard_scopes.status_code == 404
-    assert 'data-i18n="dashboardTitle"' not in enabled_page.text
-    assert 'data-i18n="skillsTitle"' not in enabled_page.text
-    assert 'data-server-session="missing"' in enabled_page.text
-    assert 'id="auth-shell"' in enabled_page.text
-    assert 'id="auth-shell" hidden' not in enabled_page.text
-    assert 'id="page-status" hidden' in enabled_page.text
+    assert scopes.status_code == 200
+    assert scopes.json()[0]["display_name"] == "Default"
+    assert removed_catalog.status_code == 404
     assert 'class="server-content" id="handoff-report"' in enabled_page.text
-    assert 'id="handoff-report" hidden' in enabled_page.text
-    assert 'data-period-mode="day"' in enabled_page.text
-    assert 'data-period-mode="week"' in enabled_page.text
-    assert 'data-period-mode="month"' in enabled_page.text
-    assert 'id="period-start" type="date"' in enabled_page.text
-    assert 'id="period-end" type="date"' in enabled_page.text
-    assert 'id="handoff-content-list"' in enabled_page.text
-    assert 'id="handoff-save-status"' in enabled_page.text
-    assert 'id="handoff-editor-actions"' in enabled_page.text
-    assert 'id="edit-handoff-content"' in enabled_page.text
-    assert 'id="save-handoff-revision"' in enabled_page.text
-    assert 'form="handoff-content-editor"' in enabled_page.text
-    assert 'id="cancel-handoff-edit"' in enabled_page.text
-    assert 'id="handoff-editor"' not in enabled_page.text
-    assert "data-handoff-choice=" not in enabled_page.text
-    assert 'id="receiver-live-state"' not in enabled_page.text
-    assert 'id="receiver-capability"' not in enabled_page.text
-    assert 'id="receiver-authorization"' not in enabled_page.text
-    assert 'id="continuity-timeline"' in enabled_page.text
-    assert 'id="continuity-timeline-toggle"' in enabled_page.text
-    assert 'aria-controls="continuity-timeline"' in enabled_page.text
+    assert 'id="scope-select"' in enabled_page.text
+    assert 'id="scope-report-rows"' in enabled_page.text
+    assert 'id="download-report"' in enabled_page.text
     assert 'data-i18n-aria-label="handoffSummary"' in enabled_page.text
-    assert 'id="auto-refresh-status"' in enabled_page.text
-    assert 'id="handoff-revision-history"' in enabled_page.text
-    assert 'id="revision-history-summary"' in enabled_page.text
-    assert 'id="transfer-state-status"' in enabled_page.text
-    assert 'id="outcome-state-status"' in enabled_page.text
-    assert 'id="task-outcome-form"' not in enabled_page.text
-    assert 'id="project-select"' not in enabled_page.text
-    assert 'id="project-search"' in enabled_page.text
-    assert 'role="combobox"' in enabled_page.text
-    assert 'aria-controls="project-options"' in enabled_page.text
-    assert 'id="project-options" role="listbox"' in enabled_page.text
-    assert 'id="project-search-status" role="status"' in enabled_page.text
-    assert 'id="workstream-list"' in enabled_page.text
-    assert 'id="workstream-switcher-toolbar"' in enabled_page.text
-    assert 'id="workstream-search"' in enabled_page.text
-    assert 'id="previous-workstream"' in enabled_page.text
-    assert 'id="workstream-position"' in enabled_page.text
-    assert 'id="next-workstream"' in enabled_page.text
-    assert 'id="workstream-filter-empty"' in enabled_page.text
-    assert 'id="handoff-snapshot"' in enabled_page.text
-    assert 'id="open-handoff-workbench"' not in enabled_page.text
-    assert 'id="handoff-workbench-panel"' not in enabled_page.text
-    assert 'id="handoff-workstream"' not in enabled_page.text
-    assert 'id="activity-title"' in enabled_page.text
-    assert 'id="activity-breakdown-list"' in enabled_page.text
-    assert '<details class="continuity-panel">' in enabled_page.text
     assert '<details class="report-metadata">' in enabled_page.text
-    assert 'id="project-tabs"' not in enabled_page.text
-    assert '<section class="report-overview"' in enabled_page.text
-    assert '<dl class="report-overview"' not in enabled_page.text
-    assert enabled_page.text.index('class="report-overview"') < enabled_page.text.index('id="blockers-section"')
-    assert enabled_page.text.index('id="blockers-section"') < enabled_page.text.index(
-        'class="data-section workstream-browser"'
-    )
-    assert enabled_page.text.index('class="data-section workstream-browser"') < enabled_page.text.index(
-        'class="data-section activity-section"'
-    )
-    assert enabled_page.text.index('class="data-section activity-section"') < enabled_page.text.index(
-        '<details class="report-metadata">'
-    )
-    assert "handoff-report.js?v=scope-report-v1" in enabled_page.text
-    assert protected_scopes.status_code == 401
-
-
-def test_handoff_report_page_contains_a_data_free_preview_template(tmp_path) -> None:
-    app = create_server_app(settings=_handoff_report_settings(tmp_path / "handoff-preview.db", enabled=True))
-
-    with TestClient(app) as client:
-        page = client.get("/handoff-reports")
-
-    preview_markup = page.text.split('id="handoff-report-preview"', maxsplit=1)[1].split(
-        'id="handoff-report"', maxsplit=1
-    )[0]
-    preview_values = [
-        fragment.split(">", maxsplit=1)[1].split("<", maxsplit=1)[0]
-        for fragment in preview_markup.split("data-preview-placeholder")[1:]
-    ]
-
-    assert page.status_code == 200
-    assert 'aria-describedby="preview-notice"' in preview_markup
-    assert "hidden" in preview_markup.split(">", maxsplit=1)[0]
-    assert 'id="preview-retry"' in preview_markup
-    assert 'role="status" aria-live="polite"' in preview_markup
-    assert preview_values
-    assert set(preview_values) == {"—"}
-    assert ">0<" not in preview_markup
-    assert "<input" not in preview_markup
-    assert "<select" not in preview_markup
-    assert 'id="download-report"' not in preview_markup
+    assert "handoff-report.js?v=scope-selection-v2" in enabled_page.text
+    assert "Project" not in enabled_page.text
+    assert "Workstream" not in enabled_page.text
 
 
 def _handoff_report_settings(database_path: Path, *, enabled: bool) -> ServerSettings:

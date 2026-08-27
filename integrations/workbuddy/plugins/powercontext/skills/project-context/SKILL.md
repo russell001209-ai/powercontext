@@ -44,17 +44,10 @@ Then run the normal resolver command again and verify the same scope. The
 binding is stored below the checkout's Git directory and is not committed.
 Never infer one Workstream when multiple candidates remain consequential.
 
-Before a durable one-turn Handoff or a `latest` Continue without an exact
-Workstream, call `select_handoff_workstream` when that MCP tool is available.
-Clients with MCP elicitation can present a native picker; otherwise the tool
-returns structured choices. On `selected`, bind the returned `scope_id` with
-`--bind-workstream`, run the normal resolver again, and require the resolved
-scope to match before any Handoff write. On `needs_selection`, present the
-returned choices and call the tool again with the user's exact `project_id` and
-`work_id`; never choose a fallback candidate silently. On `cancelled` or
-`declined`, stop the Handoff flow. If the tool is unavailable or returns
-`empty`, preserve the existing resolver behavior. The picker is read-only and
-selecting work does not itself prepare or commit a Handoff.
+Before a durable one-turn Handoff or a `latest` Continue, resolve the intended
+Scope explicitly. If the current binding is not the intended boundary, ask the
+user or host for the exact Scope ID, bind it, and verify the resolver result
+before any Handoff write. Never infer a Scope from a report view.
 
 ## Read
 

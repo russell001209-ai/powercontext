@@ -682,6 +682,7 @@ def test_stats_returns_inclusive_utc_periods_for_empty_scope(tmp_path) -> None:
     )
 
     with TestClient(app) as client:
+        default_scope_id = client.get("/v1/scopes/default").json()["scope_id"]
         responses = []
         for requested_period, expected_preset, expected_days in (
             (None, "30d", 30),
@@ -689,13 +690,18 @@ def test_stats_returns_inclusive_utc_periods_for_empty_scope(tmp_path) -> None:
             ("7d", "7d", 7),
             ("30d", "30d", 30),
         ):
-            params = {"scope_id": "project:test"}
+            payload: dict[str, object] = {
+                "selection": {"mode": "exact", "scope_ids": [default_scope_id]},
+            }
             if requested_period is not None:
-                params["period"] = requested_period
-            responses.append((client.get("/v1/stats", params=params), expected_preset, expected_days))
-        invalid = client.get(
+                payload["period"] = requested_period
+            responses.append((client.post("/v1/stats", json=payload), expected_preset, expected_days))
+        invalid = client.post(
             "/v1/stats",
-            params={"scope_id": "project:test", "period": "all"},
+            json={
+                "selection": {"mode": "exact", "scope_ids": [default_scope_id]},
+                "period": "all",
+            },
         )
 
     assert invalid.status_code == 422
@@ -716,7 +722,12 @@ def test_stats_returns_inclusive_utc_periods_for_empty_scope(tmp_path) -> None:
         }
         expected_dates = [(start_date + timedelta(days=offset)).isoformat() for offset in range(expected_days)]
 
-        assert body["scope_id"] == "project:test"
+        assert body["selection"] == {
+            "mode": "exact",
+            "scope_ids": [default_scope_id],
+            "root_scope_id": None,
+        }
+        assert body["scope_ids"] == [default_scope_id]
         assert body["usage"]["period"] == expected_period
         assert body["recall"]["period"] == expected_period
         assert [day["date"] for day in body["usage"]["daily"]] == expected_dates

@@ -77,6 +77,8 @@ from powercontext.http import (
     ReportFormat,
     RetireMemoryEntryRequest,
     ReviseMemoryEntryRequest,
+    ScopeSelection,
+    ScopeSelectionMode,
     SearchMemoryRequest,
 )
 from powercontext.http import MemorySearchMode as HttpMemorySearchMode
@@ -410,7 +412,6 @@ def test_sdk_handoff_lifecycle_reaches_generation_and_persistence(tmp_path: Path
 
 
 def test_sdk_closes_the_delegation_handoff_and_outcome_loop(tmp_path: Path) -> None:
-    scope_id = "work-continuity-e2e"
     app = create_server_app(settings=_server_settings(tmp_path / "work-continuity.db", handoff_report=True))
 
     async def scenario() -> None:
@@ -422,6 +423,16 @@ def test_sdk_closes_the_delegation_handoff_and_outcome_loop(tmp_path: Path) -> N
             ) as transport,
         ):
             client = PowerContextClient("http://testserver", http_client=transport, trust_transport_security=True)
+            scope_response = await transport.post(
+                "/v1/scopes",
+                json={
+                    "title": "Work continuity",
+                    "summary": "Delegation Handoff and outcome loop",
+                    "idempotency_key": "work-continuity-e2e",
+                },
+            )
+            scope_response.raise_for_status()
+            scope_id = scope_response.json()["scope_id"]
             contract = await client.create_work_contract(
                 CreateWorkContractRequest.model_validate({
                     "scope_id": scope_id,
@@ -534,8 +545,7 @@ def test_sdk_closes_the_delegation_handoff_and_outcome_loop(tmp_path: Path) -> N
             )
             report = await client.get_handoff_report(
                 GetHandoffReportRequest(
-                    scope_id=scope_id,
-                    include_evidence_checks=False,
+                    selection=ScopeSelection(mode=ScopeSelectionMode.EXACT, scope_ids=[scope_id]),
                     format=ReportFormat.JSON,
                 )
             )
@@ -558,17 +568,12 @@ def test_sdk_closes_the_delegation_handoff_and_outcome_loop(tmp_path: Path) -> N
         assert outcome.position == 5
         assert not isinstance(report, str)
         assert report.report is not None
-        continuity = report.report["workstreams"][0]["continuity"]
-        assert continuity["coverage"]["transfer_state"] == "accepted"
-        assert continuity["coverage"]["outcome_state"] == "covered"
-        assert continuity["coverage"]["handoff_result_covered"] is True
-        assert [event["kind"] for event in continuity["events"]] == [
-            "work-contract",
-            "handoff-boundary",
-            "handoff-receipt",
-            "handoff-receipt",
-            "task-outcome",
-        ]
+        assert report.report["scope_ids"] == [scope_id]
+        assert report.report["scopes"][0]["handoff"] == {
+            "scope_id": scope_id,
+            "artifact": committed.reference.model_dump(mode="json"),
+        }
+        assert report.report["scopes"][0]["content"]["objective"] == ("Implement and verify the work-continuity loop.")
 
     asyncio.run(scenario())
 

@@ -32,16 +32,16 @@ from powercontext.http import (
     ArtifactCandidate,
     ArtifactCandidatePage,
     ArtifactPublication,
-    AttachHandoffReportWorkspaceRequest,
     Capabilities,
     CaptureContentSourceRequest,
     CaptureContentSourceResponse,
+    ClearScopeBindingRequest,
+    ClearScopeBindingResponse,
     CommitHandoffRequest,
     CommittedHandoff,
     ContinueHandoffRequest,
-    CreateHandoffReportProjectRequest,
+    CreateScopeRequest,
     CreateWorkContractRequest,
-    DetachHandoffReportWorkspaceRequest,
     ErrorResponse,
     ExperienceArtifact,
     ExternalSkillResolution,
@@ -53,30 +53,22 @@ from powercontext.http import (
     GenerateSkillRequest,
     GetArtifactCandidateRequest,
     GetExperienceRequest,
-    GetHandoffReportProjectRequest,
     GetHandoffReportRequest,
-    GetHandoffReportWorkspaceRequest,
     GetMemoryEntryRequest,
+    GetScopeRequest,
     GetSkillRequest,
     GetStatsRequest,
     HandoffAcknowledgement,
     HandoffActivation,
     HandoffCurrentWorkRequest,
     HandoffDraft,
-    HandoffReportActivityPage,
     HandoffReportResponse,
-    HandoffReportWorkspaceBinding,
     HandoffResolution,
     HealthResponse,
     ImportExternalSkillRequest,
-    KnownHandoffScopePage,
     ListArtifactCandidatesRequest,
     ListExternalSkillsRequest,
     ListExternalSkillsResponse,
-    ListHandoffReportActivitiesRequest,
-    ListHandoffReportKnownScopesRequest,
-    ListHandoffReportProjectsRequest,
-    ListHandoffReportWorkstreamsRequest,
     ListMemoryChangesRequest,
     ListMemoryChangesResponse,
     ListMemoryEntriesRequest,
@@ -88,91 +80,84 @@ from powercontext.http import (
     PreparedHandoff,
     PreparedWorkHandoff,
     PrepareHandoffRequest,
-    ProjectDescriptor,
-    ProjectPage,
     ProposeExperienceRequest,
     ProposeSkillRequest,
     PublishArtifactRequest,
-    PurgeHandoffReportActivitiesRequest,
-    PurgeHandoffReportActivitiesResponse,
     ReadinessResponse,
-    RecordHandoffReportActivityRequest,
     RecordTaskOutcomeRequest,
-    RegisterHandoffReportWorkstreamRequest,
     RejectArtifactCandidateRequest,
     RememberMemoryRequest,
     ResolveExternalSkillRequest,
+    ResolveScopeBindingRequest,
+    ResolveScopeSelectionRequest,
     RetireMemoryEntryRequest,
     ReviseArtifactCandidateRequest,
     ReviseMemoryEntryRequest,
     ScanExternalSkillsRequest,
     ScanExternalSkillsResponse,
+    ScopeBinding,
+    ScopeDescriptor,
     ScopedStats,
+    ScopePage,
     SearchMemoryRequest,
     SearchMemoryResponse,
+    SetDefaultScopeRequest,
+    SetScopeBindingRequest,
     SkillArtifact,
-    StoredHandoffReportActivity,
-    UpdateHandoffReportProjectRequest,
-    UpdateHandoffReportWorkstreamRequest,
+    UpdateScopeRequest,
     WorkSourceReceipt,
-    WorkstreamDescriptor,
-    WorkstreamPage,
 )
 from powercontext.http._generated.operations import (
     ACKNOWLEDGE_HANDOFF,
     ACTIVATE_HANDOFF,
     APPROVE_ARTIFACT_CANDIDATE,
-    ATTACH_HANDOFF_REPORT_WORKSPACE,
     CAPTURE_CONTENT_SOURCE,
+    CLEAR_SCOPE_BINDING,
     COMMIT_HANDOFF,
     CONTINUE_HANDOFF,
-    CREATE_HANDOFF_REPORT_PROJECT,
+    CREATE_SCOPE,
     CREATE_WORK_CONTRACT,
-    DETACH_HANDOFF_REPORT_WORKSPACE,
     FINALIZE_HANDOFF,
     FLUSH_MEMORY,
     GENERATE_EXPERIENCE,
     GENERATE_SKILL,
     GET_ARTIFACT_CANDIDATE,
     GET_CAPABILITIES,
+    GET_DEFAULT_SCOPE,
     GET_EXPERIENCE,
     GET_HANDOFF_REPORT,
-    GET_HANDOFF_REPORT_PROJECT,
-    GET_HANDOFF_REPORT_WORKSPACE,
     GET_LIVENESS,
     GET_MEMORY_ENTRY,
     GET_READINESS,
+    GET_SCOPE,
     GET_SKILL,
     GET_STATS,
     HANDOFF_CURRENT_WORK,
     IMPORT_EXTERNAL_SKILL,
     LIST_ARTIFACT_CANDIDATES,
     LIST_EXTERNAL_SKILLS,
-    LIST_HANDOFF_REPORT_ACTIVITIES,
-    LIST_HANDOFF_REPORT_KNOWN_SCOPES,
-    LIST_HANDOFF_REPORT_PROJECTS,
-    LIST_HANDOFF_REPORT_WORKSTREAMS,
     LIST_MEMORY_CHANGES,
     LIST_MEMORY_ENTRIES,
+    LIST_SCOPES,
     PREPARE_CONTEXT,
     PREPARE_HANDOFF,
     PROPOSE_EXPERIENCE,
     PROPOSE_SKILL,
     PUBLISH_ARTIFACT,
-    PURGE_HANDOFF_REPORT_ACTIVITIES,
-    RECORD_HANDOFF_REPORT_ACTIVITY,
     RECORD_TASK_OUTCOME,
-    REGISTER_HANDOFF_REPORT_WORKSTREAM,
     REJECT_ARTIFACT_CANDIDATE,
     REMEMBER_MEMORY,
     RESOLVE_EXTERNAL_SKILL,
+    RESOLVE_SCOPE_BINDING,
+    RESOLVE_SCOPE_SELECTION,
     RETIRE_MEMORY_ENTRY,
     REVISE_ARTIFACT_CANDIDATE,
     REVISE_MEMORY_ENTRY,
     SCAN_EXTERNAL_SKILLS,
     SEARCH_MEMORY,
-    UPDATE_HANDOFF_REPORT_PROJECT,
-    UPDATE_HANDOFF_REPORT_WORKSTREAM,
+    SET_DEFAULT_SCOPE,
+    SET_SCOPE_BINDING,
+    UPDATE_SCOPE,
     Operation,
 )
 from powercontext.transport import is_plaintext_non_loopback
@@ -249,6 +234,56 @@ class PowerContextClient:
 
         return await self._request(GET_CAPABILITIES)
 
+    async def list_scopes(self) -> ScopePage:
+        """List durable Scope descriptors."""
+
+        return await self._request(LIST_SCOPES)
+
+    async def create_scope(self, request: CreateScopeRequest) -> ScopeDescriptor:
+        """Create one independent Scope boundary."""
+
+        return await self._request(CREATE_SCOPE, request)
+
+    async def get_scope(self, request: GetScopeRequest) -> ScopeDescriptor:
+        """Read one exact Scope descriptor."""
+
+        return await self._request(GET_SCOPE, request)
+
+    async def update_scope(self, request: UpdateScopeRequest) -> ScopeDescriptor:
+        """Replace mutable Scope metadata and relationships."""
+
+        return await self._request(UPDATE_SCOPE, request)
+
+    async def get_default_scope(self) -> ScopeDescriptor:
+        """Read the host's default Scope target."""
+
+        return await self._request(GET_DEFAULT_SCOPE)
+
+    async def set_default_scope(self, request: SetDefaultScopeRequest) -> ScopeDescriptor:
+        """Change the host's default Scope target."""
+
+        return await self._request(SET_DEFAULT_SCOPE, request)
+
+    async def resolve_scope_selection(self, request: ResolveScopeSelectionRequest) -> ScopePage:
+        """Resolve all, exact, or subtree into exact Scope descriptors."""
+
+        return await self._request(RESOLVE_SCOPE_SELECTION, request)
+
+    async def resolve_scope_binding(self, request: ResolveScopeBindingRequest) -> ScopeDescriptor:
+        """Resolve explicit and external host bindings to one Scope."""
+
+        return await self._request(RESOLVE_SCOPE_BINDING, request)
+
+    async def set_scope_binding(self, request: SetScopeBindingRequest) -> ScopeBinding:
+        """Bind one external integration identity to a Scope."""
+
+        return await self._request(SET_SCOPE_BINDING, request)
+
+    async def clear_scope_binding(self, request: ClearScopeBindingRequest) -> ClearScopeBindingResponse:
+        """Clear one external integration binding."""
+
+        return await self._request(CLEAR_SCOPE_BINDING, request)
+
     async def publish_artifact(self, request: PublishArtifactRequest) -> ArtifactPublication:
         """Deliver one exact Artifact revision into another Scope."""
 
@@ -258,118 +293,6 @@ class PowerContextClient:
         """Read current inventory and bounded usage for one scope."""
 
         return await self._request(GET_STATS, request)
-
-    async def create_handoff_report_project(
-        self,
-        request: CreateHandoffReportProjectRequest,
-    ) -> ProjectDescriptor:
-        """Create one explicit Report Project."""
-
-        return await self._request(CREATE_HANDOFF_REPORT_PROJECT, request)
-
-    async def get_handoff_report_project(
-        self,
-        request: GetHandoffReportProjectRequest,
-    ) -> ProjectDescriptor:
-        """Read one current Report Project descriptor."""
-
-        return await self._request(GET_HANDOFF_REPORT_PROJECT, request)
-
-    async def update_handoff_report_project(
-        self,
-        request: UpdateHandoffReportProjectRequest,
-    ) -> ProjectDescriptor:
-        """CAS-update one Report Project descriptor."""
-
-        return await self._request(UPDATE_HANDOFF_REPORT_PROJECT, request)
-
-    async def list_handoff_report_projects(
-        self,
-        request: ListHandoffReportProjectsRequest,
-    ) -> ProjectPage:
-        """List Report Projects with cursor pagination."""
-
-        return await self._request(LIST_HANDOFF_REPORT_PROJECTS, request)
-
-    async def list_handoff_report_known_scopes(
-        self,
-        request: ListHandoffReportKnownScopesRequest,
-    ) -> KnownHandoffScopePage:
-        """List scopes that contain a committed Handoff."""
-
-        return await self._request(LIST_HANDOFF_REPORT_KNOWN_SCOPES, request)
-
-    async def register_handoff_report_workstream(
-        self,
-        request: RegisterHandoffReportWorkstreamRequest,
-    ) -> WorkstreamDescriptor:
-        """Register one existing scope as a Report Workstream."""
-
-        return await self._request(REGISTER_HANDOFF_REPORT_WORKSTREAM, request)
-
-    async def list_handoff_report_workstreams(
-        self,
-        request: ListHandoffReportWorkstreamsRequest,
-    ) -> WorkstreamPage:
-        """List Workstreams belonging to one Report Project."""
-
-        return await self._request(LIST_HANDOFF_REPORT_WORKSTREAMS, request)
-
-    async def update_handoff_report_workstream(
-        self,
-        request: UpdateHandoffReportWorkstreamRequest,
-    ) -> WorkstreamDescriptor:
-        """CAS-update one Report Workstream descriptor."""
-
-        return await self._request(UPDATE_HANDOFF_REPORT_WORKSTREAM, request)
-
-    async def record_handoff_report_activity(
-        self,
-        request: RecordHandoffReportActivityRequest,
-    ) -> StoredHandoffReportActivity:
-        """Record one explicit Report-owned Activity observation."""
-
-        return await self._request(RECORD_HANDOFF_REPORT_ACTIVITY, request)
-
-    async def list_handoff_report_activities(
-        self,
-        request: ListHandoffReportActivitiesRequest,
-    ) -> HandoffReportActivityPage:
-        """List one frozen cursor page of Report-owned Activities."""
-
-        return await self._request(LIST_HANDOFF_REPORT_ACTIVITIES, request)
-
-    async def purge_handoff_report_activities(
-        self,
-        request: PurgeHandoffReportActivitiesRequest,
-    ) -> PurgeHandoffReportActivitiesResponse:
-        """Purge Report-owned Activities before an observation boundary."""
-
-        return await self._request(PURGE_HANDOFF_REPORT_ACTIVITIES, request)
-
-    async def get_handoff_report_workspace(
-        self,
-        request: GetHandoffReportWorkspaceRequest,
-    ) -> HandoffReportWorkspaceBinding:
-        """Read one confirmed Workspace-to-Project binding."""
-
-        return await self._request(GET_HANDOFF_REPORT_WORKSPACE, request)
-
-    async def attach_handoff_report_workspace(
-        self,
-        request: AttachHandoffReportWorkspaceRequest,
-    ) -> HandoffReportWorkspaceBinding:
-        """Attach a Workspace to an exact Report Project using CAS."""
-
-        return await self._request(ATTACH_HANDOFF_REPORT_WORKSPACE, request)
-
-    async def detach_handoff_report_workspace(
-        self,
-        request: DetachHandoffReportWorkspaceRequest,
-    ) -> HandoffReportWorkspaceBinding:
-        """Detach a Workspace binding using its exact version."""
-
-        return await self._request(DETACH_HANDOFF_REPORT_WORKSPACE, request)
 
     async def get_handoff_report(self, request: GetHandoffReportRequest) -> HandoffReportResponse | str:
         """Generate the current canonical Handoff Report projection."""

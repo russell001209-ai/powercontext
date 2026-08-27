@@ -165,7 +165,7 @@ class _DashboardSkillProjectionRoutes:
         return await _skill_projection_response(application, request.scope_id, skill, self._targets)
 
 
-def mount_web_ui(
+def mount_web_ui(  # noqa: C901
     app: FastAPI,
     *,
     dashboard_enabled: bool = False,
@@ -265,13 +265,6 @@ def mount_web_ui(
             name="dashboard_home",
         )
         router.add_api_route(
-            "/dashboard/scopes",
-            list_dashboard_scopes,
-            methods=["GET"],
-            response_model=list[DashboardScope],
-            name="dashboard_scopes",
-        )
-        router.add_api_route(
             "/skills",
             skills_page,
             methods=["GET"],
@@ -298,6 +291,14 @@ def mount_web_ui(
             methods=["POST"],
             response_model=DashboardSkillProjection,
             name="dashboard_skill_projection_publish",
+        )
+    if dashboard_enabled or handoff_report_enabled:
+        router.add_api_route(
+            "/dashboard/scopes",
+            list_dashboard_scopes,
+            methods=["GET"],
+            response_model=list[DashboardScope],
+            name="dashboard_scopes",
         )
     if handoff_report_enabled:
         router.add_api_route(

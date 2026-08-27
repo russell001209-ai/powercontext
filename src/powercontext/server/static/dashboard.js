@@ -23,6 +23,7 @@ import {
   storeServerToken
 } from "./auth.js?v=optional-auth";
 import {createPageUi, createRequestGate} from "./page-ui.js?v=locale-complete";
+import {buildScopeSelectionChoices} from "./scope-selection.js?v=selection-v1";
 
 const translations = {
   en: {
@@ -236,7 +237,7 @@ async function authenticate(token, scopeId = "") {
       showPageStatus("noScopes", {}, true);
       return;
     }
-    const choices = selectionChoices(currentScopes);
+    const choices = buildScopeSelectionChoices(currentScopes, translate);
     const selectedKey = choices.some((choice) => choice.key === scopeId) ? scopeId : "all";
     currentScopeId = selectedKey;
     await loadStatistics(token, selectedKey, request);
@@ -261,7 +262,7 @@ async function loadStatistics(token, scopeId, request = null) {
   currentScopeId = scopeId;
   scopeSelect.disabled = true;
   try {
-    const choice = selectionChoices(currentScopes).find((item) => item.key === scopeId);
+    const choice = buildScopeSelectionChoices(currentScopes, translate).find((item) => item.key === scopeId);
     if (!choice) {
       showPageStatus("scopeUnavailable", {}, true);
       return;
@@ -376,32 +377,13 @@ function renderDashboard(view) {
 
 function renderScopes(scopes, selectedKey) {
   scopeSelect.replaceChildren();
-  for (const choice of selectionChoices(scopes)) {
+  for (const choice of buildScopeSelectionChoices(scopes, translate)) {
     const option = document.createElement("option");
     option.value = choice.key;
     option.textContent = choice.label;
     option.selected = choice.key === selectedKey;
     scopeSelect.appendChild(option);
   }
-}
-
-function selectionChoices(scopes) {
-  const choices = [{key: "all", label: translate("allScopes"), selection: {mode: "all"}}];
-  for (const scope of scopes.filter((item) => item.parent_scope_id === null)) {
-    choices.push({
-      key: `subtree:${scope.scope_id}`,
-      label: translate("subtreeView", {title: scope.display_name}),
-      selection: {mode: "subtree", root_scope_id: scope.scope_id}
-    });
-  }
-  for (const scope of scopes) {
-    choices.push({
-      key: `exact:${scope.scope_id}`,
-      label: translate("exactFocus", {title: scope.display_name}),
-      selection: {mode: "exact", scope_ids: [scope.scope_id]}
-    });
-  }
-  return choices;
 }
 
 function renderArtifactFamilies(inventory) {

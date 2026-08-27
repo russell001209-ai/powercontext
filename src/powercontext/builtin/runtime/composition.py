@@ -38,9 +38,8 @@ from powercontext.builtin.artifacts.memory import (
     MemoryReranker,
 )
 from powercontext.builtin.artifacts.skill import AgentSkillProvider, ExternalSkillProvider, SkillGenerator
-from powercontext.builtin.handoff_report.adapters import RuntimeHandoffReadAdapter, RuntimeWorkContinuityReadAdapter
+from powercontext.builtin.handoff_report.adapters import RuntimeHandoffReadAdapter
 from powercontext.builtin.handoff_report.application import HandoffReportApplication
-from powercontext.builtin.handoff_report.sqlite import HANDOFF_REPORT_TABLES
 from powercontext.builtin.inference import EmbeddingModel, TokenEstimator, character_token_estimator
 from powercontext.builtin.inference.usage import (
     UsageReportingEmbeddingModel,
@@ -287,10 +286,8 @@ async def open_builtin_runtime(
         )
         if config.handoff_report.enabled:
             runtime.handoff_report = HandoffReportApplication(
-                contexts.database,
+                contexts.scopes,
                 RuntimeHandoffReadAdapter(runtime.handoff),
-                continuity=RuntimeWorkContinuityReadAdapter(runtime.work),
-                scope_ids=contexts.handoff_scope_ids,
             )
         if config.runtime.schedule_seconds is not None and configured_pipeline is None:
             raise BuiltinConfigurationError("scheduled-pipeline")
@@ -324,7 +321,6 @@ async def open_builtin_contexts(
     """Open the selected database and expose scope-bound PowerContext providers."""
 
     database = config.database
-    report_tables = HANDOFF_REPORT_TABLES if config.handoff_report.enabled else ()
     configured_token_estimator = character_token_estimator() if token_estimator is None else token_estimator
     if isinstance(database, SQLiteConfig):
         experience_index = SQLiteExperienceFTSIndex()
@@ -334,7 +330,7 @@ async def open_builtin_contexts(
         index = CompositeMemoryIndex(*indexes)
         async with SQLiteProfile.open(
             database,
-            tables=BUILTIN_TABLES + report_tables + index.tables,
+            tables=BUILTIN_TABLES + index.tables,
             load_vector_extension=embedding_model is not None,
         ) as profile:
             async with profile.database.transaction() as connection:
@@ -363,7 +359,7 @@ async def open_builtin_contexts(
     if embedding_model is not None:
         indexes.append(OceanBaseMemoryVectorIndex(embedding_model.profile))
     index = CompositeMemoryIndex(*indexes)
-    tables = BUILTIN_TABLES + report_tables + index.tables
+    tables = BUILTIN_TABLES + index.tables
     if isinstance(database, OceanBaseConfig):
         profile_context = OceanBaseProfile.open(database, tables=tables)
     elif isinstance(database, SeekDBConfig):

@@ -60,7 +60,8 @@ def _empty_inventory() -> dict[str, object]:
 
 def _stats_response() -> ScopedStats:
     return ScopedStats.model_validate({
-        "scope_id": "project",
+        "selection": {"mode": "exact", "scope_ids": ["project"]},
+        "scope_ids": ["project"],
         "as_of": "2026-08-04T12:00:00Z",
         "inventory": _empty_inventory(),
         "usage": {
@@ -400,7 +401,10 @@ def test_stats_command_builds_request_and_prints_summary(
     )
 
     assert result.exit_code == 0
-    assert received[0].model_dump(mode="json") == {"scope_id": "project", "period": "today"}
+    assert received[0].model_dump(mode="json") == {
+        "selection": {"mode": "exact", "scope_ids": ["project"], "root_scope_id": None},
+        "period": "today",
+    }
     assert "Sources: 0 total, 0 memory processed, 0 memory pending" in result.output
     assert "Generation: 0 requests, 0 input tokens, 0 output tokens" in result.output
     assert "Recall token estimator: character:weighted@1" in result.output

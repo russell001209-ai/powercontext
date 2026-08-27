@@ -20,7 +20,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterable
 from datetime import datetime
 
-from powercontext.builtin.scope import ScopeSelection
+from powercontext.builtin.scope.models import ScopeSelection
 from powercontext.builtin.statistics.models import (
     ArtifactInventoryStatistics,
     CandidateFamilyCount,
