@@ -32,6 +32,7 @@ from fastapi import Depends, FastAPI, Query, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from opentelemetry.trace import SpanKind
+from pydantic import ValidationError as PydanticValidationError
 from starlette.middleware import Middleware
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.types import Lifespan
@@ -192,6 +193,28 @@ from powercontext.builtin.runtime import (
 from powercontext.builtin.runtime import (
     StatisticsPeriod as RuntimeStatisticsPeriod,
 )
+from powercontext.builtin.scope import (
+    ScopeApplication,
+    ScopeBindingNotFoundError,
+    ScopeDraft,
+    ScopeIdempotencyConflictError,
+    ScopeMutation,
+    ScopeNotFoundError,
+    ScopeRelationshipError,
+    ScopeVersionConflictError,
+)
+from powercontext.builtin.scope import (
+    ScopeBindingKey as DomainScopeBindingKey,
+)
+from powercontext.builtin.scope import (
+    ScopeDescriptor as DomainScopeDescriptor,
+)
+from powercontext.builtin.scope import (
+    ScopeExternalReference as DomainScopeExternalReference,
+)
+from powercontext.builtin.scope import (
+    ScopeSelection as DomainScopeSelection,
+)
 from powercontext.builtin.work import (
     AcknowledgeHandoff as RuntimeAcknowledgeHandoff,
 )
@@ -223,10 +246,13 @@ from powercontext.http import (
     Capabilities,
     CaptureContentSourceRequest,
     CaptureContentSourceResponse,
+    ClearScopeBindingRequest,
+    ClearScopeBindingResponse,
     CommitHandoffRequest,
     CommittedHandoff,
     ContinueHandoffRequest,
     CreateHandoffReportProjectRequest,
+    CreateScopeRequest,
     CreateWorkContractRequest,
     DetachHandoffReportWorkspaceRequest,
     ErrorDetail,
@@ -245,6 +271,7 @@ from powercontext.http import (
     GetHandoffReportRequest,
     GetHandoffReportWorkspaceRequest,
     GetMemoryEntryRequest,
+    GetScopeRequest,
     GetSkillRequest,
     GetStatsRequest,
     HandoffAcknowledgement,
@@ -289,18 +316,27 @@ from powercontext.http import (
     RejectArtifactCandidateRequest,
     RememberMemoryRequest,
     ResolveExternalSkillRequest,
+    ResolveScopeBindingRequest,
+    ResolveScopeSelectionRequest,
     RetireMemoryEntryRequest,
     ReviseArtifactCandidateRequest,
     ReviseMemoryEntryRequest,
     ScanExternalSkillsRequest,
     ScanExternalSkillsResponse,
+    ScopeBinding,
+    ScopeBindingKey,
+    ScopeDescriptor,
     ScopedStats,
+    ScopePage,
     SearchMemoryRequest,
     SearchMemoryResponse,
+    SetDefaultScopeRequest,
+    SetScopeBindingRequest,
     SkillArtifact,
     StoredHandoffReportActivity,
     UpdateHandoffReportProjectRequest,
     UpdateHandoffReportWorkstreamRequest,
+    UpdateScopeRequest,
     WorkSourceReceipt,
     WorkstreamDescriptor,
     WorkstreamPage,
@@ -326,9 +362,11 @@ from powercontext.http._generated.operations import (
     APPROVE_ARTIFACT_CANDIDATE,
     ATTACH_HANDOFF_REPORT_WORKSPACE,
     CAPTURE_CONTENT_SOURCE,
+    CLEAR_SCOPE_BINDING,
     COMMIT_HANDOFF,
     CONTINUE_HANDOFF,
     CREATE_HANDOFF_REPORT_PROJECT,
+    CREATE_SCOPE,
     CREATE_WORK_CONTRACT,
     DETACH_HANDOFF_REPORT_WORKSPACE,
     FINALIZE_HANDOFF,
@@ -337,6 +375,7 @@ from powercontext.http._generated.operations import (
     GENERATE_SKILL,
     GET_ARTIFACT_CANDIDATE,
     GET_CAPABILITIES,
+    GET_DEFAULT_SCOPE,
     GET_EXPERIENCE,
     GET_HANDOFF_REPORT,
     GET_HANDOFF_REPORT_PROJECT,
@@ -344,6 +383,7 @@ from powercontext.http._generated.operations import (
     GET_LIVENESS,
     GET_MEMORY_ENTRY,
     GET_READINESS,
+    GET_SCOPE,
     GET_SKILL,
     GET_STATS,
     HANDOFF_CURRENT_WORK,
@@ -356,6 +396,7 @@ from powercontext.http._generated.operations import (
     LIST_HANDOFF_REPORT_WORKSTREAMS,
     LIST_MEMORY_CHANGES,
     LIST_MEMORY_ENTRIES,
+    LIST_SCOPES,
     OPENAPI_VERSION,
     PREPARE_CONTEXT,
     PREPARE_HANDOFF,
@@ -368,13 +409,18 @@ from powercontext.http._generated.operations import (
     REJECT_ARTIFACT_CANDIDATE,
     REMEMBER_MEMORY,
     RESOLVE_EXTERNAL_SKILL,
+    RESOLVE_SCOPE_BINDING,
+    RESOLVE_SCOPE_SELECTION,
     RETIRE_MEMORY_ENTRY,
     REVISE_ARTIFACT_CANDIDATE,
     REVISE_MEMORY_ENTRY,
     SCAN_EXTERNAL_SKILLS,
     SEARCH_MEMORY,
+    SET_DEFAULT_SCOPE,
+    SET_SCOPE_BINDING,
     UPDATE_HANDOFF_REPORT_PROJECT,
     UPDATE_HANDOFF_REPORT_WORKSTREAM,
+    UPDATE_SCOPE,
     Operation,
 )
 from powercontext.http._generated.schema import OPENAPI_SCHEMA
@@ -537,6 +583,7 @@ class _StatisticsApplication(Protocol):
 
 
 class ServerApplication(Protocol):
+    scopes: ScopeApplication | None
     sources: _SourceApplication
     context: _ContextApplication
     experience: _ExperienceApplication
@@ -606,7 +653,11 @@ def create_app(
         return response
 
     @app.exception_handler(RequestValidationError)
-    async def invalid_request(request: Request, error: RequestValidationError) -> JSONResponse:
+    @app.exception_handler(PydanticValidationError)
+    async def invalid_request(
+        request: Request,
+        error: RequestValidationError | PydanticValidationError,
+    ) -> JSONResponse:
         return _error_response(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             code="invalid_request",
@@ -635,6 +686,16 @@ def create_app(
     _add_route(app, GET_LIVENESS, get_liveness)
     _add_route(app, GET_READINESS, get_readiness)
     _add_route(app, GET_CAPABILITIES, get_capabilities)
+    _add_route(app, LIST_SCOPES, list_scopes)
+    _add_route(app, CREATE_SCOPE, create_scope)
+    _add_route(app, GET_SCOPE, get_scope)
+    _add_route(app, UPDATE_SCOPE, update_scope)
+    _add_route(app, GET_DEFAULT_SCOPE, get_default_scope)
+    _add_route(app, SET_DEFAULT_SCOPE, set_default_scope)
+    _add_route(app, RESOLVE_SCOPE_SELECTION, resolve_scope_selection)
+    _add_route(app, RESOLVE_SCOPE_BINDING, resolve_scope_binding)
+    _add_route(app, SET_SCOPE_BINDING, set_scope_binding)
+    _add_route(app, CLEAR_SCOPE_BINDING, clear_scope_binding)
     _add_route(app, GET_STATS, get_stats)
     if handoff_report_enabled:
         _add_route(app, CREATE_HANDOFF_REPORT_PROJECT, create_handoff_report_project)
@@ -721,6 +782,117 @@ async def get_capabilities(request: Request) -> Capabilities:
     if capability_provider is not None:
         return capability_provider()
     return request.app.state.capabilities
+
+
+async def list_scopes(
+    scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
+) -> ScopePage:
+    return ScopePage(items=[_scope_descriptor_response(scope) for scope in await scopes.list()])
+
+
+async def create_scope(
+    request: CreateScopeRequest,
+    scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
+) -> ScopeDescriptor:
+    created = await scopes.create(
+        ScopeDraft(
+            title=request.title,
+            summary=request.summary,
+            parent_scope_id=request.parent_scope_id,
+            context_references=tuple(reference.root for reference in request.context_references),
+            external_references=tuple(
+                DomainScopeExternalReference(kind=reference.kind, value=reference.value)
+                for reference in request.external_references
+            ),
+            idempotency_key=request.idempotency_key,
+        )
+    )
+    return _scope_descriptor_response(created)
+
+
+async def get_scope(
+    request: GetScopeRequest,
+    scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
+) -> ScopeDescriptor:
+    return _scope_descriptor_response(await scopes.get(request.scope_id))
+
+
+async def update_scope(
+    request: UpdateScopeRequest,
+    scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
+) -> ScopeDescriptor:
+    updated = await scopes.update(
+        request.scope_id,
+        ScopeMutation(
+            expected_version=request.expected_version,
+            title=request.title,
+            summary=request.summary,
+            parent_scope_id=request.parent_scope_id,
+            context_references=tuple(reference.root for reference in request.context_references),
+            external_references=tuple(
+                DomainScopeExternalReference(kind=reference.kind, value=reference.value)
+                for reference in request.external_references
+            ),
+        ),
+    )
+    return _scope_descriptor_response(updated)
+
+
+async def get_default_scope(
+    scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
+) -> ScopeDescriptor:
+    current = await scopes.default_scope()
+    if current is None:
+        raise ScopeBindingNotFoundError
+    return _scope_descriptor_response(current)
+
+
+async def set_default_scope(
+    request: SetDefaultScopeRequest,
+    scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
+) -> ScopeDescriptor:
+    return _scope_descriptor_response(await scopes.set_default(request.root.scope_id))
+
+
+async def resolve_scope_selection(
+    request: ResolveScopeSelectionRequest,
+    scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
+) -> ScopePage:
+    selection = DomainScopeSelection(
+        mode=request.selection.mode.value,
+        scope_ids=tuple(scope_id.root for scope_id in request.selection.scope_ids),
+        root_scope_id=request.selection.root_scope_id,
+    )
+    return ScopePage(items=[_scope_descriptor_response(scope) for scope in await scopes.resolve_selection(selection)])
+
+
+async def resolve_scope_binding(
+    request: ResolveScopeBindingRequest,
+    scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
+) -> ScopeDescriptor:
+    resolved = await scopes.resolve_binding(
+        explicit_scope_id=request.explicit_scope_id,
+        binding_keys=tuple(_domain_binding_key(key) for key in request.binding_keys),
+    )
+    return _scope_descriptor_response(resolved)
+
+
+async def set_scope_binding(
+    request: SetScopeBindingRequest,
+    scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
+) -> ScopeBinding:
+    binding = await scopes.bind(_domain_binding_key(request.root.key), request.root.scope_id)
+    return ScopeBinding(
+        key=_transport_binding_key(binding.key),
+        scope_id=binding.scope_id,
+    )
+
+
+async def clear_scope_binding(
+    request: ClearScopeBindingRequest,
+    scopes: Annotated[ScopeApplication, Depends(_require_scope_application)],
+) -> ClearScopeBindingResponse:
+    return ClearScopeBindingResponse(cleared=await scopes.clear_binding(_domain_binding_key(request.key)))
 
 
 async def get_stats(
@@ -1327,6 +1499,13 @@ def _require_application(request: Request) -> ServerApplication:
     return application
 
 
+def _require_scope_application(request: Request) -> ScopeApplication:
+    application = _require_application(request)
+    if application.scopes is None:
+        raise _RuntimeNotReadyError
+    return application.scopes
+
+
 def _require_handoff_report_application(request: Request) -> HandoffReportApplication:
     application = _require_application(request)
     if application.handoff_report is None:
@@ -1340,6 +1519,26 @@ def _project_descriptor_response(value: DomainProjectDescriptor) -> ProjectDescr
 
 def _workstream_descriptor_response(value: DomainWorkstreamDescriptor) -> WorkstreamDescriptor:
     return WorkstreamDescriptor.model_validate(value.model_dump(mode="json", by_alias=True))
+
+
+def _scope_descriptor_response(value: DomainScopeDescriptor) -> ScopeDescriptor:
+    return ScopeDescriptor.model_validate(value.model_dump(mode="json"))
+
+
+def _domain_binding_key(value: ScopeBindingKey) -> DomainScopeBindingKey:
+    return DomainScopeBindingKey(
+        integration=value.integration,
+        kind=value.kind,
+        external_id=value.external_id,
+    )
+
+
+def _transport_binding_key(value: DomainScopeBindingKey) -> ScopeBindingKey:
+    return ScopeBindingKey(
+        integration=value.integration,
+        kind=value.kind,
+        external_id=value.external_id,
+    )
 
 
 def _add_route(
@@ -1481,11 +1680,11 @@ def _error_response(
     return JSONResponse(status_code=response_status, content=error.model_dump(mode="json"))
 
 
-def _validation_error_details(error: RequestValidationError) -> list[Any]:
+def _validation_error_details(error: RequestValidationError | PydanticValidationError) -> list[Any]:
     details: list[Any] = []
     for item in error.errors():
         if isinstance(item, dict):
-            details.append({key: value for key, value in item.items() if key != "input"})
+            details.append({key: value for key, value in item.items() if key not in {"ctx", "input", "url"}})
         else:
             details.append(item)
     return details
@@ -1517,6 +1716,9 @@ def _map_error(error: Exception) -> tuple[int, str, str, dict[str, Any] | None]:
             "Artifact generation is not configured.",
             {"family": error.family},
         )
+    scope_error = _map_scope_error(error)
+    if scope_error is not None:
+        return scope_error
     candidate_error = _map_candidate_error(error)
     if candidate_error is not None:
         return candidate_error
@@ -1527,6 +1729,33 @@ def _map_error(error: Exception) -> tuple[int, str, str, dict[str, Any] | None]:
     if report_error is not None:
         return report_error
     return _map_domain_error(error)
+
+
+def _map_scope_error(error: Exception) -> tuple[int, str, str, dict[str, Any] | None] | None:
+    if isinstance(error, (ScopeNotFoundError, ScopeBindingNotFoundError)):
+        return status.HTTP_404_NOT_FOUND, "scope_not_found", "The requested Scope was not found.", None
+    if isinstance(error, ScopeVersionConflictError):
+        return (
+            status.HTTP_409_CONFLICT,
+            "scope_version_conflict",
+            "The Scope metadata version is stale.",
+            {"expected_version": error.expected, "current_version": error.actual},
+        )
+    if isinstance(error, ScopeIdempotencyConflictError):
+        return (
+            status.HTTP_409_CONFLICT,
+            "scope_idempotency_conflict",
+            "The Scope creation key identifies different parameters.",
+            None,
+        )
+    if isinstance(error, ScopeRelationshipError):
+        return (
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "invalid_scope_relationship",
+            "The Scope relationship is invalid.",
+            {"relationship": error.relationship, "issue": error.issue},
+        )
+    return None
 
 
 def _map_candidate_error(error: Exception) -> tuple[int, str, str, dict[str, Any] | None] | None:

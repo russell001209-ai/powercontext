@@ -30,6 +30,143 @@ class ArtifactReference(BaseModel):
     revision: Annotated[StrictInt, Field(ge=1)]
 
 
+class ScopeExternalReference(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    kind: Annotated[StrictStr, Field(max_length=128, min_length=1, pattern=".*\\S.*")]
+    value: Annotated[StrictStr, Field(max_length=2000, min_length=1, pattern=".*\\S.*")]
+
+
+class ContextReference(RootModel[StrictStr]):
+    root: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+
+
+class ScopeDescriptor(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    scope_id: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+    title: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+    summary: Annotated[StrictStr, Field(max_length=2000, min_length=1, pattern=".*\\S.*")]
+    parent_scope_id: Annotated[StrictStr | None, Field(max_length=256, min_length=1, pattern=".*\\S.*")] = None
+    context_references: list[ContextReference]
+    external_references: list[ScopeExternalReference]
+    version: Annotated[StrictInt, Field(ge=1)]
+
+
+class ScopePage(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    items: list[ScopeDescriptor]
+
+
+class CreateScopeRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    title: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+    summary: Annotated[StrictStr, Field(max_length=2000, min_length=1, pattern=".*\\S.*")]
+    parent_scope_id: Annotated[StrictStr | None, Field(max_length=256, min_length=1, pattern=".*\\S.*")] = None
+    context_references: Annotated[list[ContextReference], Field(validate_default=True)] = []
+    external_references: Annotated[list[ScopeExternalReference], Field(validate_default=True)] = []
+    idempotency_key: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+
+
+class GetScopeRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    scope_id: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+
+
+class UpdateScopeRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    scope_id: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+    expected_version: Annotated[StrictInt, Field(ge=1)]
+    title: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+    summary: Annotated[StrictStr, Field(max_length=2000, min_length=1, pattern=".*\\S.*")]
+    parent_scope_id: Annotated[StrictStr | None, Field(max_length=256, min_length=1, pattern=".*\\S.*")] = None
+    context_references: Annotated[list[ContextReference], Field(validate_default=True)] = []
+    external_references: Annotated[list[ScopeExternalReference], Field(validate_default=True)] = []
+
+
+class SetDefaultScopeRequest(RootModel[GetScopeRequest]):
+    root: GetScopeRequest
+
+
+class ScopeSelectionMode(StrEnum):
+    ALL = "all"
+    EXACT = "exact"
+    SUBTREE = "subtree"
+
+
+class ScopeId(RootModel[StrictStr]):
+    root: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+
+
+class ScopeSelection(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    mode: ScopeSelectionMode
+    scope_ids: Annotated[list[ScopeId], Field(validate_default=True)] = []
+    root_scope_id: Annotated[StrictStr | None, Field(max_length=256, min_length=1, pattern=".*\\S.*")] = None
+
+
+class ResolveScopeSelectionRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    selection: ScopeSelection
+
+
+class ScopeBindingKey(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration: Annotated[StrictStr, Field(max_length=128, min_length=1, pattern=".*\\S.*")]
+    kind: Annotated[StrictStr, Field(max_length=64, min_length=1, pattern=".*\\S.*")]
+    external_id: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+
+
+class ScopeBinding(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    key: ScopeBindingKey
+    scope_id: Annotated[StrictStr, Field(max_length=256, min_length=1, pattern=".*\\S.*")]
+
+
+class SetScopeBindingRequest(RootModel[ScopeBinding]):
+    root: ScopeBinding
+
+
+class ClearScopeBindingRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    key: ScopeBindingKey
+
+
+class ClearScopeBindingResponse(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    cleared: StrictBool
+
+
+class ResolveScopeBindingRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    explicit_scope_id: Annotated[StrictStr | None, Field(max_length=256, min_length=1, pattern=".*\\S.*")] = None
+    binding_keys: Annotated[list[ScopeBindingKey], Field(validate_default=True)] = []
+
+
 class ApproveArtifactCandidateRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",

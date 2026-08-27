@@ -79,6 +79,226 @@ paths:
                 $ref: "#/components/schemas/Capabilities"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /v1/scopes:
+    get:
+      tags: [scopes]
+      summary: List observable Scopes
+      operationId: list_scopes
+      responses:
+        "200":
+          description: Durable Scope metadata in deterministic identity order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopePage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+    post:
+      tags: [scopes]
+      summary: Create an independent Scope boundary
+      operationId: create_scope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScopeRequest"
+      responses:
+        "201":
+          description: The durable Scope descriptor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeDescriptor"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
+  /v1/scopes/get:
+    post:
+      tags: [scopes]
+      summary: Get one Scope descriptor
+      operationId: get_scope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetScopeRequest"
+      responses:
+        "200":
+          description: The exact Scope descriptor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeDescriptor"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /v1/scopes/update:
+    post:
+      tags: [scopes]
+      summary: Replace mutable Scope metadata and relationships
+      operationId: update_scope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScopeRequest"
+      responses:
+        "200":
+          description: The updated Scope descriptor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeDescriptor"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
+  /v1/scopes/default:
+    get:
+      tags: [scopes]
+      summary: Get the default Scope binding target
+      operationId: get_default_scope
+      responses:
+        "200":
+          description: The ordinary Scope selected by the host default pointer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeDescriptor"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [scopes]
+      summary: Change the default Scope binding target
+      operationId: set_default_scope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetDefaultScopeRequest"
+      responses:
+        "200":
+          description: The selected ordinary Scope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeDescriptor"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /v1/scopes/selection/resolve:
+    post:
+      tags: [scopes]
+      summary: Resolve an observation selection to a frozen Scope set
+      operationId: resolve_scope_selection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveScopeSelectionRequest"
+      responses:
+        "200":
+          description: The selected Scope descriptors in deterministic order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopePage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
+  /v1/scope-bindings/resolve:
+    post:
+      tags: [scope-bindings]
+      summary: Resolve an explicit durable or default Scope binding
+      operationId: resolve_scope_binding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveScopeBindingRequest"
+      responses:
+        "200":
+          description: The resolved Scope descriptor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeDescriptor"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
+  /v1/scope-bindings:
+    put:
+      tags: [scope-bindings]
+      summary: Persist an external identity to Scope binding
+      operationId: set_scope_binding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetScopeBindingRequest"
+      responses:
+        "200":
+          description: The durable external binding.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeBinding"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
+  /v1/scope-bindings/clear:
+    post:
+      tags: [scope-bindings]
+      summary: Remove one durable external Scope binding
+      operationId: clear_scope_binding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClearScopeBindingRequest"
+      responses:
+        "200":
+          description: Whether a durable binding was removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClearScopeBindingResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
   /v1/sources/content:
     post:
       tags: [sources]
@@ -1817,6 +2037,264 @@ components:
         revision:
           type: integer
           minimum: 1
+    ScopeExternalReference:
+      type: object
+      additionalProperties: false
+      required: [kind, value]
+      properties:
+        kind:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '.*\S.*'
+        value:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: '.*\S.*'
+    ScopeDescriptor:
+      type: object
+      additionalProperties: false
+      required: [scope_id, title, summary, context_references, external_references, version]
+      properties:
+        scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: '.*\S.*'
+        parent_scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+          nullable: true
+        context_references:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 256
+            pattern: '.*\S.*'
+        external_references:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ScopeExternalReference"
+        version:
+          type: integer
+          minimum: 1
+    ScopePage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScopeDescriptor"
+    CreateScopeRequest:
+      type: object
+      additionalProperties: false
+      required: [title, summary, idempotency_key]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: '.*\S.*'
+        parent_scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+          nullable: true
+        context_references:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 256
+            pattern: '.*\S.*'
+          default: []
+        external_references:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ScopeExternalReference"
+          default: []
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+    GetScopeRequest:
+      type: object
+      additionalProperties: false
+      required: [scope_id]
+      properties:
+        scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+    UpdateScopeRequest:
+      type: object
+      additionalProperties: false
+      required: [scope_id, expected_version, title, summary]
+      properties:
+        scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+        expected_version:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: '.*\S.*'
+        parent_scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+          nullable: true
+        context_references:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 256
+            pattern: '.*\S.*'
+          default: []
+        external_references:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ScopeExternalReference"
+          default: []
+    SetDefaultScopeRequest:
+      $ref: "#/components/schemas/GetScopeRequest"
+    ScopeSelectionMode:
+      type: string
+      enum: [all, exact, subtree]
+    ScopeSelection:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          $ref: "#/components/schemas/ScopeSelectionMode"
+        scope_ids:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 256
+            pattern: '.*\S.*'
+          default: []
+        root_scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+          nullable: true
+    ResolveScopeSelectionRequest:
+      type: object
+      additionalProperties: false
+      required: [selection]
+      properties:
+        selection:
+          $ref: "#/components/schemas/ScopeSelection"
+    ScopeBindingKey:
+      type: object
+      additionalProperties: false
+      required: [integration, kind, external_id]
+      properties:
+        integration:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '.*\S.*'
+        kind:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '.*\S.*'
+        external_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+    ScopeBinding:
+      type: object
+      additionalProperties: false
+      required: [key, scope_id]
+      properties:
+        key:
+          $ref: "#/components/schemas/ScopeBindingKey"
+        scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+    SetScopeBindingRequest:
+      $ref: "#/components/schemas/ScopeBinding"
+    ClearScopeBindingRequest:
+      type: object
+      additionalProperties: false
+      required: [key]
+      properties:
+        key:
+          $ref: "#/components/schemas/ScopeBindingKey"
+    ClearScopeBindingResponse:
+      type: object
+      additionalProperties: false
+      required: [cleared]
+      properties:
+        cleared:
+          type: boolean
+    ResolveScopeBindingRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        explicit_scope_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '.*\S.*'
+          nullable: true
+        binding_keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScopeBindingKey"
+          default: []
     ArtifactCandidate:
       type: object
       additionalProperties: false

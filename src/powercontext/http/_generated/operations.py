@@ -16,10 +16,13 @@ from powercontext.http._generated.models import (
     Capabilities,
     CaptureContentSourceRequest,
     CaptureContentSourceResponse,
+    ClearScopeBindingRequest,
+    ClearScopeBindingResponse,
     CommitHandoffRequest,
     CommittedHandoff,
     ContinueHandoffRequest,
     CreateHandoffReportProjectRequest,
+    CreateScopeRequest,
     CreateWorkContractRequest,
     DetachHandoffReportWorkspaceRequest,
     ExperienceArtifact,
@@ -36,6 +39,7 @@ from powercontext.http._generated.models import (
     GetHandoffReportRequest,
     GetHandoffReportWorkspaceRequest,
     GetMemoryEntryRequest,
+    GetScopeRequest,
     GetSkillRequest,
     GetStatsRequest,
     HandoffAcknowledgement,
@@ -80,18 +84,26 @@ from powercontext.http._generated.models import (
     RejectArtifactCandidateRequest,
     RememberMemoryRequest,
     ResolveExternalSkillRequest,
+    ResolveScopeBindingRequest,
+    ResolveScopeSelectionRequest,
     RetireMemoryEntryRequest,
     ReviseArtifactCandidateRequest,
     ReviseMemoryEntryRequest,
     ScanExternalSkillsRequest,
     ScanExternalSkillsResponse,
+    ScopeBinding,
+    ScopeDescriptor,
     ScopedStats,
+    ScopePage,
     SearchMemoryRequest,
     SearchMemoryResponse,
+    SetDefaultScopeRequest,
+    SetScopeBindingRequest,
     SkillArtifact,
     StoredHandoffReportActivity,
     UpdateHandoffReportProjectRequest,
     UpdateHandoffReportWorkstreamRequest,
+    UpdateScopeRequest,
     WorkSourceReceipt,
     WorkstreamDescriptor,
     WorkstreamPage,
@@ -175,6 +187,183 @@ GET_CAPABILITIES = Operation[None, Capabilities](
             "headers": {"X-PowerContext-Request-ID": {"$ref": "#/components/headers/RequestId"}},
         },
         401: {"$ref": "#/components/responses/Unauthorized"},
+    },
+)
+
+LIST_SCOPES = Operation[None, ScopePage](
+    method="GET",
+    path="/v1/scopes",
+    operation_id="list_scopes",
+    request_type=None,
+    request_location=None,
+    response_type=ScopePage,
+    success_status=200,
+    summary="List observable Scopes",
+    tags=("scopes",),
+    responses={
+        200: {"description": "Durable Scope metadata in deterministic identity order."},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+        503: {"$ref": "#/components/responses/Unavailable"},
+    },
+)
+
+CREATE_SCOPE = Operation[CreateScopeRequest, ScopeDescriptor](
+    method="POST",
+    path="/v1/scopes",
+    operation_id="create_scope",
+    request_type=CreateScopeRequest,
+    request_location="body",
+    response_type=ScopeDescriptor,
+    success_status=201,
+    summary="Create an independent Scope boundary",
+    tags=("scopes",),
+    responses={
+        201: {"description": "The durable Scope descriptor."},
+        404: {"$ref": "#/components/responses/NotFound"},
+        409: {"$ref": "#/components/responses/Conflict"},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+        422: {"$ref": "#/components/responses/InvalidRequest"},
+    },
+)
+
+GET_SCOPE = Operation[GetScopeRequest, ScopeDescriptor](
+    method="POST",
+    path="/v1/scopes/get",
+    operation_id="get_scope",
+    request_type=GetScopeRequest,
+    request_location="body",
+    response_type=ScopeDescriptor,
+    success_status=200,
+    summary="Get one Scope descriptor",
+    tags=("scopes",),
+    responses={
+        200: {"description": "The exact Scope descriptor."},
+        404: {"$ref": "#/components/responses/NotFound"},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+    },
+)
+
+UPDATE_SCOPE = Operation[UpdateScopeRequest, ScopeDescriptor](
+    method="POST",
+    path="/v1/scopes/update",
+    operation_id="update_scope",
+    request_type=UpdateScopeRequest,
+    request_location="body",
+    response_type=ScopeDescriptor,
+    success_status=200,
+    summary="Replace mutable Scope metadata and relationships",
+    tags=("scopes",),
+    responses={
+        200: {"description": "The updated Scope descriptor."},
+        404: {"$ref": "#/components/responses/NotFound"},
+        409: {"$ref": "#/components/responses/Conflict"},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+        422: {"$ref": "#/components/responses/InvalidRequest"},
+    },
+)
+
+GET_DEFAULT_SCOPE = Operation[None, ScopeDescriptor](
+    method="GET",
+    path="/v1/scopes/default",
+    operation_id="get_default_scope",
+    request_type=None,
+    request_location=None,
+    response_type=ScopeDescriptor,
+    success_status=200,
+    summary="Get the default Scope binding target",
+    tags=("scopes",),
+    responses={
+        200: {"description": "The ordinary Scope selected by the host default pointer."},
+        404: {"$ref": "#/components/responses/NotFound"},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+    },
+)
+
+SET_DEFAULT_SCOPE = Operation[SetDefaultScopeRequest, ScopeDescriptor](
+    method="PUT",
+    path="/v1/scopes/default",
+    operation_id="set_default_scope",
+    request_type=SetDefaultScopeRequest,
+    request_location="body",
+    response_type=ScopeDescriptor,
+    success_status=200,
+    summary="Change the default Scope binding target",
+    tags=("scopes",),
+    responses={
+        200: {"description": "The selected ordinary Scope."},
+        404: {"$ref": "#/components/responses/NotFound"},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+    },
+)
+
+RESOLVE_SCOPE_SELECTION = Operation[ResolveScopeSelectionRequest, ScopePage](
+    method="POST",
+    path="/v1/scopes/selection/resolve",
+    operation_id="resolve_scope_selection",
+    request_type=ResolveScopeSelectionRequest,
+    request_location="body",
+    response_type=ScopePage,
+    success_status=200,
+    summary="Resolve an observation selection to a frozen Scope set",
+    tags=("scopes",),
+    responses={
+        200: {"description": "The selected Scope descriptors in deterministic order."},
+        404: {"$ref": "#/components/responses/NotFound"},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+        422: {"$ref": "#/components/responses/InvalidRequest"},
+    },
+)
+
+RESOLVE_SCOPE_BINDING = Operation[ResolveScopeBindingRequest, ScopeDescriptor](
+    method="POST",
+    path="/v1/scope-bindings/resolve",
+    operation_id="resolve_scope_binding",
+    request_type=ResolveScopeBindingRequest,
+    request_location="body",
+    response_type=ScopeDescriptor,
+    success_status=200,
+    summary="Resolve an explicit durable or default Scope binding",
+    tags=("scope-bindings",),
+    responses={
+        200: {"description": "The resolved Scope descriptor."},
+        404: {"$ref": "#/components/responses/NotFound"},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+        422: {"$ref": "#/components/responses/InvalidRequest"},
+    },
+)
+
+SET_SCOPE_BINDING = Operation[SetScopeBindingRequest, ScopeBinding](
+    method="PUT",
+    path="/v1/scope-bindings",
+    operation_id="set_scope_binding",
+    request_type=SetScopeBindingRequest,
+    request_location="body",
+    response_type=ScopeBinding,
+    success_status=200,
+    summary="Persist an external identity to Scope binding",
+    tags=("scope-bindings",),
+    responses={
+        200: {"description": "The durable external binding."},
+        404: {"$ref": "#/components/responses/NotFound"},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+        422: {"$ref": "#/components/responses/InvalidRequest"},
+    },
+)
+
+CLEAR_SCOPE_BINDING = Operation[ClearScopeBindingRequest, ClearScopeBindingResponse](
+    method="POST",
+    path="/v1/scope-bindings/clear",
+    operation_id="clear_scope_binding",
+    request_type=ClearScopeBindingRequest,
+    request_location="body",
+    response_type=ClearScopeBindingResponse,
+    success_status=200,
+    summary="Remove one durable external Scope binding",
+    tags=("scope-bindings",),
+    responses={
+        200: {"description": "Whether a durable binding was removed."},
+        401: {"$ref": "#/components/responses/Unauthorized"},
+        422: {"$ref": "#/components/responses/InvalidRequest"},
     },
 )
 

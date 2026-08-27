@@ -60,6 +60,203 @@ OPENAPI_SCHEMA: dict[str, JsonValue] = {
                 },
             }
         },
+        "/v1/scopes": {
+            "get": {
+                "tags": ["scopes"],
+                "summary": "List observable Scopes",
+                "operationId": "list_scopes",
+                "responses": {
+                    "200": {
+                        "description": "Durable Scope metadata in deterministic identity order.",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScopePage"}}},
+                    },
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "503": {"$ref": "#/components/responses/Unavailable"},
+                },
+            },
+            "post": {
+                "tags": ["scopes"],
+                "summary": "Create an independent Scope boundary",
+                "operationId": "create_scope",
+                "requestBody": {
+                    "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateScopeRequest"}}},
+                    "required": True,
+                },
+                "responses": {
+                    "201": {
+                        "description": "The durable Scope descriptor.",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScopeDescriptor"}}},
+                    },
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "409": {"$ref": "#/components/responses/Conflict"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "422": {"$ref": "#/components/responses/InvalidRequest"},
+                },
+            },
+        },
+        "/v1/scopes/get": {
+            "post": {
+                "tags": ["scopes"],
+                "summary": "Get one Scope descriptor",
+                "operationId": "get_scope",
+                "requestBody": {
+                    "content": {"application/json": {"schema": {"$ref": "#/components/schemas/GetScopeRequest"}}},
+                    "required": True,
+                },
+                "responses": {
+                    "200": {
+                        "description": "The exact Scope descriptor.",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScopeDescriptor"}}},
+                    },
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                },
+            }
+        },
+        "/v1/scopes/update": {
+            "post": {
+                "tags": ["scopes"],
+                "summary": "Replace mutable Scope metadata and relationships",
+                "operationId": "update_scope",
+                "requestBody": {
+                    "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UpdateScopeRequest"}}},
+                    "required": True,
+                },
+                "responses": {
+                    "200": {
+                        "description": "The updated Scope descriptor.",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScopeDescriptor"}}},
+                    },
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "409": {"$ref": "#/components/responses/Conflict"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "422": {"$ref": "#/components/responses/InvalidRequest"},
+                },
+            }
+        },
+        "/v1/scopes/default": {
+            "get": {
+                "tags": ["scopes"],
+                "summary": "Get the default Scope binding target",
+                "operationId": "get_default_scope",
+                "responses": {
+                    "200": {
+                        "description": "The ordinary Scope selected by the host default pointer.",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScopeDescriptor"}}},
+                    },
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                },
+            },
+            "put": {
+                "tags": ["scopes"],
+                "summary": "Change the default Scope binding target",
+                "operationId": "set_default_scope",
+                "requestBody": {
+                    "content": {
+                        "application/json": {"schema": {"$ref": "#/components/schemas/SetDefaultScopeRequest"}}
+                    },
+                    "required": True,
+                },
+                "responses": {
+                    "200": {
+                        "description": "The selected ordinary Scope.",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScopeDescriptor"}}},
+                    },
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                },
+            },
+        },
+        "/v1/scopes/selection/resolve": {
+            "post": {
+                "tags": ["scopes"],
+                "summary": "Resolve an observation selection to a frozen Scope set",
+                "operationId": "resolve_scope_selection",
+                "requestBody": {
+                    "content": {
+                        "application/json": {"schema": {"$ref": "#/components/schemas/ResolveScopeSelectionRequest"}}
+                    },
+                    "required": True,
+                },
+                "responses": {
+                    "200": {
+                        "description": "The selected Scope descriptors in deterministic order.",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScopePage"}}},
+                    },
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "422": {"$ref": "#/components/responses/InvalidRequest"},
+                },
+            }
+        },
+        "/v1/scope-bindings/resolve": {
+            "post": {
+                "tags": ["scope-bindings"],
+                "summary": "Resolve an explicit durable or default Scope binding",
+                "operationId": "resolve_scope_binding",
+                "requestBody": {
+                    "content": {
+                        "application/json": {"schema": {"$ref": "#/components/schemas/ResolveScopeBindingRequest"}}
+                    },
+                    "required": True,
+                },
+                "responses": {
+                    "200": {
+                        "description": "The resolved Scope descriptor.",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScopeDescriptor"}}},
+                    },
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "422": {"$ref": "#/components/responses/InvalidRequest"},
+                },
+            }
+        },
+        "/v1/scope-bindings": {
+            "put": {
+                "tags": ["scope-bindings"],
+                "summary": "Persist an external identity to Scope binding",
+                "operationId": "set_scope_binding",
+                "requestBody": {
+                    "content": {
+                        "application/json": {"schema": {"$ref": "#/components/schemas/SetScopeBindingRequest"}}
+                    },
+                    "required": True,
+                },
+                "responses": {
+                    "200": {
+                        "description": "The durable external binding.",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScopeBinding"}}},
+                    },
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "422": {"$ref": "#/components/responses/InvalidRequest"},
+                },
+            }
+        },
+        "/v1/scope-bindings/clear": {
+            "post": {
+                "tags": ["scope-bindings"],
+                "summary": "Remove one durable external Scope binding",
+                "operationId": "clear_scope_binding",
+                "requestBody": {
+                    "content": {
+                        "application/json": {"schema": {"$ref": "#/components/schemas/ClearScopeBindingRequest"}}
+                    },
+                    "required": True,
+                },
+                "responses": {
+                    "200": {
+                        "description": "Whether a durable binding was removed.",
+                        "content": {
+                            "application/json": {"schema": {"$ref": "#/components/schemas/ClearScopeBindingResponse"}}
+                        },
+                    },
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "422": {"$ref": "#/components/responses/InvalidRequest"},
+                },
+            }
+        },
         "/v1/sources/content": {
             "post": {
                 "tags": ["sources"],
@@ -1534,6 +1731,193 @@ OPENAPI_SCHEMA: dict[str, JsonValue] = {
                 "additionalProperties": False,
                 "type": "object",
                 "required": ["family", "artifact_id", "revision"],
+            },
+            "ScopeExternalReference": {
+                "properties": {
+                    "kind": {"type": "string", "maxLength": 128, "minLength": 1, "pattern": ".*\\S.*"},
+                    "value": {"type": "string", "maxLength": 2000, "minLength": 1, "pattern": ".*\\S.*"},
+                },
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["kind", "value"],
+            },
+            "ScopeDescriptor": {
+                "properties": {
+                    "scope_id": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                    "title": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                    "summary": {"type": "string", "maxLength": 2000, "minLength": 1, "pattern": ".*\\S.*"},
+                    "parent_scope_id": {
+                        "type": "string",
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "pattern": ".*\\S.*",
+                        "nullable": True,
+                    },
+                    "context_references": {
+                        "items": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                        "type": "array",
+                        "uniqueItems": True,
+                    },
+                    "external_references": {
+                        "items": {"$ref": "#/components/schemas/ScopeExternalReference"},
+                        "type": "array",
+                        "uniqueItems": True,
+                    },
+                    "version": {"type": "integer", "minimum": 1.0},
+                },
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["scope_id", "title", "summary", "context_references", "external_references", "version"],
+            },
+            "ScopePage": {
+                "properties": {"items": {"items": {"$ref": "#/components/schemas/ScopeDescriptor"}, "type": "array"}},
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["items"],
+            },
+            "CreateScopeRequest": {
+                "properties": {
+                    "title": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                    "summary": {"type": "string", "maxLength": 2000, "minLength": 1, "pattern": ".*\\S.*"},
+                    "parent_scope_id": {
+                        "type": "string",
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "pattern": ".*\\S.*",
+                        "nullable": True,
+                    },
+                    "context_references": {
+                        "items": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                        "type": "array",
+                        "uniqueItems": True,
+                        "default": [],
+                    },
+                    "external_references": {
+                        "items": {"$ref": "#/components/schemas/ScopeExternalReference"},
+                        "type": "array",
+                        "uniqueItems": True,
+                        "default": [],
+                    },
+                    "idempotency_key": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                },
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["title", "summary", "idempotency_key"],
+            },
+            "GetScopeRequest": {
+                "properties": {"scope_id": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"}},
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["scope_id"],
+            },
+            "UpdateScopeRequest": {
+                "properties": {
+                    "scope_id": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                    "expected_version": {"type": "integer", "minimum": 1.0},
+                    "title": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                    "summary": {"type": "string", "maxLength": 2000, "minLength": 1, "pattern": ".*\\S.*"},
+                    "parent_scope_id": {
+                        "type": "string",
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "pattern": ".*\\S.*",
+                        "nullable": True,
+                    },
+                    "context_references": {
+                        "items": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                        "type": "array",
+                        "uniqueItems": True,
+                        "default": [],
+                    },
+                    "external_references": {
+                        "items": {"$ref": "#/components/schemas/ScopeExternalReference"},
+                        "type": "array",
+                        "uniqueItems": True,
+                        "default": [],
+                    },
+                },
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["scope_id", "expected_version", "title", "summary"],
+            },
+            "SetDefaultScopeRequest": {"$ref": "#/components/schemas/GetScopeRequest"},
+            "ScopeSelectionMode": {"type": "string", "enum": ["all", "exact", "subtree"]},
+            "ScopeSelection": {
+                "properties": {
+                    "mode": {"$ref": "#/components/schemas/ScopeSelectionMode"},
+                    "scope_ids": {
+                        "items": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                        "type": "array",
+                        "uniqueItems": True,
+                        "default": [],
+                    },
+                    "root_scope_id": {
+                        "type": "string",
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "pattern": ".*\\S.*",
+                        "nullable": True,
+                    },
+                },
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["mode"],
+            },
+            "ResolveScopeSelectionRequest": {
+                "properties": {"selection": {"$ref": "#/components/schemas/ScopeSelection"}},
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["selection"],
+            },
+            "ScopeBindingKey": {
+                "properties": {
+                    "integration": {"type": "string", "maxLength": 128, "minLength": 1, "pattern": ".*\\S.*"},
+                    "kind": {"type": "string", "maxLength": 64, "minLength": 1, "pattern": ".*\\S.*"},
+                    "external_id": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                },
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["integration", "kind", "external_id"],
+            },
+            "ScopeBinding": {
+                "properties": {
+                    "key": {"$ref": "#/components/schemas/ScopeBindingKey"},
+                    "scope_id": {"type": "string", "maxLength": 256, "minLength": 1, "pattern": ".*\\S.*"},
+                },
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["key", "scope_id"],
+            },
+            "SetScopeBindingRequest": {"$ref": "#/components/schemas/ScopeBinding"},
+            "ClearScopeBindingRequest": {
+                "properties": {"key": {"$ref": "#/components/schemas/ScopeBindingKey"}},
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["key"],
+            },
+            "ClearScopeBindingResponse": {
+                "properties": {"cleared": {"type": "boolean"}},
+                "additionalProperties": False,
+                "type": "object",
+                "required": ["cleared"],
+            },
+            "ResolveScopeBindingRequest": {
+                "properties": {
+                    "explicit_scope_id": {
+                        "type": "string",
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "pattern": ".*\\S.*",
+                        "nullable": True,
+                    },
+                    "binding_keys": {
+                        "items": {"$ref": "#/components/schemas/ScopeBindingKey"},
+                        "type": "array",
+                        "default": [],
+                    },
+                },
+                "additionalProperties": False,
+                "type": "object",
             },
             "ArtifactCandidate": {
                 "properties": {
