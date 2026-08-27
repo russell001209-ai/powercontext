@@ -89,6 +89,7 @@ from powercontext.builtin.runtime.prepared_context import PreparedContextBuild
 from powercontext.builtin.runtime.protocols import BuiltinTriggers
 from powercontext.builtin.runtime.recall import RelationalRecallTokenEstimator
 from powercontext.builtin.runtime.statistics import RelationalScopedStatistics
+from powercontext.builtin.scope import ScopeApplication
 from powercontext.builtin.sources import (
     CONTENT_SOURCE_ADAPTER,
     EXTERNAL_SKILL_SNAPSHOT_SOURCE_ADAPTER,
@@ -305,6 +306,7 @@ class RelationalContexts:
         memory_artifact_id: str = "memory",
     ) -> None:
         self.database = database
+        self.scopes = ScopeApplication(database)
         self.index = NoMemoryIndex() if index is None else index
         self.experience_index = NoExperienceIndex() if experience_index is None else experience_index
         self.repositories = _Repositories(

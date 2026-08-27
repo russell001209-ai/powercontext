@@ -133,6 +133,7 @@ from powercontext.builtin.runtime.readiness import (
     RuntimeReadinessChecks,
 )
 from powercontext.builtin.runtime.statistics import RelationalScopedStatistics
+from powercontext.builtin.scope import ScopeApplication
 from powercontext.builtin.sources import (
     ContentCapture,
     ContentSource,
@@ -1191,6 +1192,7 @@ class BuiltinRuntime:
         external_skill_importer: ExternalSkillImporter | None = None,
         statistics_service: StatisticsServiceFactory | None = None,
         recall_token_estimator: RecallTokenEstimator | None = None,
+        scope_application: ScopeApplication | None = None,
         readiness: RuntimeReadinessChecks | None = None,
         clock: Clock | None = None,
         tracing: RuntimeTracing | None = None,
@@ -1209,6 +1211,7 @@ class BuiltinRuntime:
         self._external_skill_importer = external_skill_importer
         self._statistics_service = statistics_service
         self._recall_token_estimator = recall_token_estimator
+        self.scopes = scope_application
         self._readiness = RuntimeReadinessChecks() if readiness is None else readiness
         self._clock = _utc_now if clock is None else clock
         self._tracing = tracing

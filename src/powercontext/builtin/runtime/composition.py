@@ -279,6 +279,7 @@ async def open_builtin_runtime(
                 external_skill_importer=contexts.import_external_skill if contexts.external_skill_registry else None,
                 statistics_service=contexts.statistics,
                 recall_token_estimator=contexts.estimate_recall_tokens,
+                scope_application=contexts.scopes,
                 readiness=RuntimeReadinessChecks(readiness_probes),
                 tracing=tracing,
             )
@@ -338,7 +339,7 @@ async def open_builtin_contexts(
             async with profile.database.transaction() as connection:
                 await index.initialize(connection)
                 await experience_index.initialize(connection)
-            yield RelationalContexts(
+            contexts = RelationalContexts(
                 database=profile.database,
                 index=index,
                 experience_index=experience_index,
@@ -353,6 +354,8 @@ async def open_builtin_contexts(
                 memory_reranker=memory_reranker,
                 memory_rerank_candidate_limit=config.runtime.memory_rerank_candidate_limit,
             )
+            await contexts.scopes.bootstrap_default()
+            yield contexts
         return
     experience_index = OceanBaseExperienceFTSIndex()
     indexes = [OceanBaseMemoryFTSIndex()]
@@ -370,7 +373,7 @@ async def open_builtin_contexts(
         async with profile.database.transaction() as connection:
             await index.initialize(connection)
             await experience_index.initialize(connection)
-        yield RelationalContexts(
+        contexts = RelationalContexts(
             database=profile.database,
             index=index,
             experience_index=experience_index,
@@ -385,6 +388,8 @@ async def open_builtin_contexts(
             memory_reranker=memory_reranker,
             memory_rerank_candidate_limit=config.runtime.memory_rerank_candidate_limit,
         )
+        await contexts.scopes.bootstrap_default()
+        yield contexts
 
 
 async def _generation_pipelines(
