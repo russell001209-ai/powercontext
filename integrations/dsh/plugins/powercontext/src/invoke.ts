@@ -103,6 +103,9 @@ export function injectScope(
   payload: JsonObject | undefined,
   scopeId: string,
 ): JsonObject | undefined {
+  if (operationId === 'get_stats' || operationId === 'get_handoff_report') {
+    return { ...payload, selection: { mode: 'exact', scope_ids: [scopeId] } }
+  }
   if (!OPERATIONS[operationId].scope) return payload
   return { ...payload, scope_id: scopeId }
 }

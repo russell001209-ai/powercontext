@@ -40,10 +40,10 @@ describe('operations coverage', () => {
       scope: false,
     })
     expect(OPERATIONS.get_stats).toEqual({
-      method: 'GET',
+      method: 'POST',
       path: '/v1/stats',
-      location: 'query',
-      scope: true,
+      location: 'body',
+      scope: false,
     })
     expect(OPERATIONS.remember_memory).toEqual({
       method: 'POST',
@@ -51,7 +51,7 @@ describe('operations coverage', () => {
       location: 'body',
       scope: true,
     })
-    expect(OPERATIONS.get_handoff_report.scope).toBe(true)
+    expect(OPERATIONS.get_handoff_report.scope).toBe(false)
     expect(OPERATIONS.get_capabilities.location).toBeNull()
   })
 

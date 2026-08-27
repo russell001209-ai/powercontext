@@ -72,6 +72,32 @@ describe('invokeOperation', () => {
     })
   })
 
+  it('limits observation selections to the derived workspace scope', async () => {
+    const bodies: unknown[] = []
+    const client = new PowerContextClient({
+      baseUrl: 'http://127.0.0.1:8000',
+      requestTimeoutMs: 1000,
+      fetch: async (_url, init) => {
+        bodies.push(JSON.parse(String(init?.body)))
+        return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      },
+    })
+
+    await invokeOperation(client, 'get_stats', { selection: { mode: 'all' } }, 'project:derived-workspace')
+    await invokeOperation(client, 'get_handoff_report', {
+      selection: { mode: 'subtree', root_scope_id: 'scope:other' },
+      format: 'json',
+    }, 'project:derived-workspace')
+
+    expect(bodies).toEqual([
+      { selection: { mode: 'exact', scope_ids: ['project:derived-workspace'] } },
+      {
+        selection: { mode: 'exact', scope_ids: ['project:derived-workspace'] },
+        format: 'json',
+      },
+    ])
+  })
+
   it('returns unavailable instead of throwing when the server is down', async () => {
     const client = new PowerContextClient({
       baseUrl: 'http://127.0.0.1:8000',

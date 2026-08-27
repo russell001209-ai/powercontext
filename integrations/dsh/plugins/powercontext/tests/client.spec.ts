@@ -61,11 +61,14 @@ describe('PowerContextClient', () => {
     expect(fetchImpl).toHaveBeenCalledOnce()
   })
 
-  it('sends get_stats as a GET query string', async () => {
+  it('sends get_stats as a POST selection', async () => {
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
-      expect(url).toBe('http://127.0.0.1:8000/v1/stats?scope_id=project%3Ademo&period=7d')
-      expect(init?.method).toBe('GET')
-      expect(init?.body).toBeUndefined()
+      expect(url).toBe('http://127.0.0.1:8000/v1/stats')
+      expect(init?.method).toBe('POST')
+      expect(JSON.parse(String(init?.body))).toEqual({
+        selection: { mode: 'exact', scope_ids: ['project:demo'] },
+        period: '7d',
+      })
       return jsonResponse(200, { memories: 1 })
     })
     const client = new PowerContextClient({
@@ -73,7 +76,10 @@ describe('PowerContextClient', () => {
       requestTimeoutMs: 1000,
       fetch: fetchImpl,
     })
-    await client.request('get_stats', { scope_id: 'project:demo', period: '7d' })
+    await client.request('get_stats', {
+      selection: { mode: 'exact', scope_ids: ['project:demo'] },
+      period: '7d',
+    })
     expect(fetchImpl).toHaveBeenCalledOnce()
   })
 
@@ -83,11 +89,12 @@ describe('PowerContextClient', () => {
       requestTimeoutMs: 1000,
       fetch: async () => new Response('# Report', { status: 200 }),
     })
-    await expect(markdownClient.request('get_handoff_report', { project_id: 'p1', format: 'markdown' })).resolves.toMatchObject({
+    const selection = { mode: 'exact', scope_ids: ['scope-1'] }
+    await expect(markdownClient.request('get_handoff_report', { selection, format: 'markdown' })).resolves.toMatchObject({
       kind: 'text',
       value: '# Report',
     })
-    await expect(markdownClient.request('get_handoff_report', { project_id: 'p1' })).resolves.toMatchObject({
+    await expect(markdownClient.request('get_handoff_report', { selection })).resolves.toMatchObject({
       kind: 'text',
       value: '# Report',
     })
@@ -96,7 +103,7 @@ describe('PowerContextClient', () => {
       requestTimeoutMs: 1000,
       fetch: async () => new Response(new Uint8Array([1, 2, 3]), { status: 200 }),
     })
-    const downloaded = await bytesClient.request('get_handoff_report', { project_id: 'p1', download: true })
+    const downloaded = await bytesClient.request('get_handoff_report', { selection, download: true })
     expect(downloaded.kind).toBe('bytes')
     if (downloaded.kind === 'bytes') expect([...downloaded.value]).toEqual([1, 2, 3])
   })

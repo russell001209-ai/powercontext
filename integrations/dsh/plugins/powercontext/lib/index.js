@@ -99,6 +99,72 @@ const OPERATIONS = {
 		location: null,
 		scope: false
 	},
+	list_scopes: {
+		method: "GET",
+		path: "/v1/scopes",
+		location: null,
+		scope: false
+	},
+	create_scope: {
+		method: "POST",
+		path: "/v1/scopes",
+		location: "body",
+		scope: false
+	},
+	publish_artifact: {
+		method: "POST",
+		path: "/v1/artifact-publications",
+		location: "body",
+		scope: false
+	},
+	get_scope: {
+		method: "POST",
+		path: "/v1/scopes/get",
+		location: "body",
+		scope: true
+	},
+	update_scope: {
+		method: "POST",
+		path: "/v1/scopes/update",
+		location: "body",
+		scope: true
+	},
+	get_default_scope: {
+		method: "GET",
+		path: "/v1/scopes/default",
+		location: null,
+		scope: false
+	},
+	set_default_scope: {
+		method: "PUT",
+		path: "/v1/scopes/default",
+		location: "body",
+		scope: true
+	},
+	resolve_scope_selection: {
+		method: "POST",
+		path: "/v1/scopes/selection/resolve",
+		location: "body",
+		scope: false
+	},
+	resolve_scope_binding: {
+		method: "POST",
+		path: "/v1/scope-bindings/resolve",
+		location: "body",
+		scope: false
+	},
+	set_scope_binding: {
+		method: "PUT",
+		path: "/v1/scope-bindings",
+		location: "body",
+		scope: true
+	},
+	clear_scope_binding: {
+		method: "POST",
+		path: "/v1/scope-bindings/clear",
+		location: "body",
+		scope: false
+	},
 	capture_content_source: {
 		method: "POST",
 		path: "/v1/sources/content",
@@ -304,98 +370,14 @@ const OPERATIONS = {
 		scope: true
 	},
 	get_stats: {
-		method: "GET",
+		method: "POST",
 		path: "/v1/stats",
-		location: "query",
-		scope: true
-	},
-	create_handoff_report_project: {
-		method: "POST",
-		path: "/v1/handoff-reports/projects/create",
-		location: "body",
-		scope: false
-	},
-	list_handoff_report_projects: {
-		method: "POST",
-		path: "/v1/handoff-reports/projects/list",
-		location: "body",
-		scope: false
-	},
-	list_handoff_report_known_scopes: {
-		method: "POST",
-		path: "/v1/handoff-reports/scopes/list-known",
-		location: "body",
-		scope: false
-	},
-	get_handoff_report_project: {
-		method: "POST",
-		path: "/v1/handoff-reports/projects/get",
-		location: "body",
-		scope: false
-	},
-	update_handoff_report_project: {
-		method: "POST",
-		path: "/v1/handoff-reports/projects/update",
-		location: "body",
-		scope: false
-	},
-	register_handoff_report_workstream: {
-		method: "POST",
-		path: "/v1/handoff-reports/workstreams/register",
-		location: "body",
-		scope: true
-	},
-	list_handoff_report_workstreams: {
-		method: "POST",
-		path: "/v1/handoff-reports/workstreams/list",
-		location: "body",
-		scope: false
-	},
-	update_handoff_report_workstream: {
-		method: "POST",
-		path: "/v1/handoff-reports/workstreams/update",
 		location: "body",
 		scope: false
 	},
 	get_handoff_report: {
 		method: "POST",
 		path: "/v1/handoff-reports/get",
-		location: "body",
-		scope: true
-	},
-	record_handoff_report_activity: {
-		method: "POST",
-		path: "/v1/handoff-reports/activities/record",
-		location: "body",
-		scope: true
-	},
-	list_handoff_report_activities: {
-		method: "POST",
-		path: "/v1/handoff-reports/activities/list",
-		location: "body",
-		scope: false
-	},
-	purge_handoff_report_activities: {
-		method: "POST",
-		path: "/v1/handoff-reports/activities/purge",
-		location: "body",
-		scope: false
-	},
-	get_handoff_report_workspace: {
-		method: "POST",
-		path: "/v1/handoff-reports/workspace-bindings/get",
-		location: "body",
-		scope: false
-	},
-	attach_handoff_report_workspace: {
-		method: "POST",
-		path: "/v1/handoff-reports/workspace-bindings/attach",
-		location: "body",
-		scope: false
-	},
-	detach_handoff_report_workspace: {
-		method: "POST",
-		path: "/v1/handoff-reports/workspace-bindings/detach",
 		location: "body",
 		scope: false
 	}
@@ -693,6 +675,13 @@ function toToolResult(error) {
 	};
 }
 function injectScope(operationId, payload, scopeId) {
+	if (operationId === "get_stats" || operationId === "get_handoff_report") return {
+		...payload,
+		selection: {
+			mode: "exact",
+			scope_ids: [scopeId]
+		}
+	};
 	if (!OPERATIONS[operationId].scope) return payload;
 	return {
 		...payload,
