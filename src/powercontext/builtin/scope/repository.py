@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+from hashlib import sha256
+
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -274,6 +276,7 @@ class ScopeRepository:
                         "ordinal": ordinal,
                         "kind": reference.kind,
                         "value": reference.value,
+                        "value_digest": sha256(reference.value.encode()).hexdigest(),
                     }
                     for ordinal, reference in enumerate(external_references)
                 ],

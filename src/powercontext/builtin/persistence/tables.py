@@ -115,8 +115,9 @@ SCOPE_EXTERNAL_REFERENCES_TABLE = Table(
     Column("ordinal", Integer, primary_key=True),
     Column("kind", identity_string(MAX_SCOPE_EXTERNAL_REFERENCE_KIND_LENGTH), nullable=False),
     Column("value", String(MAX_SCOPE_SUMMARY_LENGTH), nullable=False),
+    Column("value_digest", identity_string(64), nullable=False),
     ForeignKeyConstraint(("scope_id",), ("pc_scopes.scope_id",), ondelete="CASCADE"),
-    UniqueConstraint("scope_id", "kind", "value", name="uq_pc_scope_external_references_value"),
+    UniqueConstraint("scope_id", "kind", "value_digest", name="uq_pc_scope_external_references_value"),
     CheckConstraint("ordinal >= 0", name="ck_pc_scope_external_references_ordinal_nonnegative"),
 )
 
