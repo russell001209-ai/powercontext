@@ -99,6 +99,7 @@ _STAGE_ATTRIBUTE_KEYS = {
         "powercontext.operation.name",
         "powercontext.operation.unit",
         "powercontext.operation.outcome",
+        "powercontext.context.build.scope_count",
         "powercontext.context.build.memory_candidate_count",
         "powercontext.context.build.experience_candidate_count",
         "powercontext.context.build.selected_count",
